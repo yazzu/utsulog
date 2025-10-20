@@ -35,11 +35,13 @@ def main():
                 while chat.is_alive():
                     for c in chat.get().items:
                         chat_data = {
+                            "videoId": video_id,
                             "datetime": c.datetime,
                             "elapsedTime": c.elapsedTime,
                             "timestamp": c.timestamp,
                             "message": c.message,
-                            "author_name": c.author.name,
+                            "authorName": c.author.name,
+                            "authorChannelId": c.author.channelId,
                             "id": c.id
                         }
                         json.dump(chat_data, json_file, ensure_ascii=False)
