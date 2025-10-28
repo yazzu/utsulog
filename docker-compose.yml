@@ -22,6 +22,21 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
 
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
 volumes:
   esdata:
     driver: local
