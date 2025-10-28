@@ -6,6 +6,7 @@ WORKDIR /app
 
 # 依存関係をインストール
 COPY requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションのソースコードをコピー
