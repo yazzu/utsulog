@@ -44,3 +44,4 @@ Thumbs.db
 *.tsv
 chat_logs/*.json
 api_key.txt
+instraction_log.txt
