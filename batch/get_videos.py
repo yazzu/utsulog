@@ -1,6 +1,7 @@
 
 import os
 import csv
+from datetime import datetime
 from googleapiclient.discovery import build
 
 # --- 設定 ---
@@ -94,11 +95,18 @@ def get_video_details(youtube, video_ids):
             video_url = f'https://www.youtube.com/watch?v={video_id}'
             # サムネイルURLを取得（高解像度を優先）
             thumnail_url = item['snippet']['thumbnails'].get('high', {}).get('url')
+            
+            # 投稿日を取得してフォーマット
+            published_at_iso = item['snippet']['publishedAt']
+            published_at_dt = datetime.fromisoformat(published_at_iso.replace('Z', '+00:00'))
+            published_at = published_at_dt.strftime('%Y%m%d%H%M%S')
+
 
             video_details.append({
                 'title': title,
                 'video_url': video_url,
-                'thumnail_url': thumnail_url
+                'thumnail_url': thumnail_url,
+                'publishedAt': published_at
             })
             
     print(f"Got details for {len(video_details)} videos.")
@@ -114,7 +122,7 @@ def write_to_tsv(video_details, file_path):
 
     with open(file_path, 'w', newline='', encoding='utf-8') as tsvfile:
         # overview_batch.md のカラム順に合わせる
-        fieldnames = ['title', 'video_url', 'thumnail_url']
+        fieldnames = ['title', 'video_url', 'thumnail_url', 'publishedAt']
         writer = csv.DictWriter(tsvfile, fieldnames=fieldnames, delimiter='	')
 
         writer.writeheader()

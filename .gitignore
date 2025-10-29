@@ -1,6 +1,46 @@
-api_key.txt
-chat_logs/
-instraction_log.txt
-stamp_images/
-test/
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*~
+
+# Python
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Frontend build artifacts
+dist/
+build/
+.next/
+.nuxt/
+.svelte-kit/
+
+# Logs
+*.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Gemini CLI
+.gemini/
+
+# Project specific
+*.tsv
+chat_logs/*.json
+api_key.txt

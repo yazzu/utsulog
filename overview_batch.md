@@ -13,6 +13,8 @@
             - title
             - video_url
             - thumnail_url
+            - publishedAt
+                - yyyymmddHHMMSS 形式
         - ファイル名
             - utsuro_himuro_streams.tsv
 
