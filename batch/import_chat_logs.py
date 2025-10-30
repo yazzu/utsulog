@@ -5,12 +5,36 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- 設定 ---
-ELASTICSEARCH_URL = "http://localhost:9200"
+ELASTICSEARCH_URL = "http://elasticsearch:9200"
 INDEX_NAME = "youtube-chat-logs"
 CHAT_LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'chat_logs')
 BULK_ENDPOINT = f"{ELASTICSEARCH_URL}/_bulk"
 MAX_WORKERS = 4  # 並列処理するスレッド数
 # --- 設定ここまで ---
+
+def create_index_if_not_exists(index_name, es_url):
+    """
+    指定されたインデックスが存在しない場合、レプリカ数を0に設定して作成する。
+    """
+    index_url = f"{es_url}/{index_name}"
+    try:
+        response = requests.head(index_url) # インデックスの存在を確認
+        if response.status_code == 404: # インデックスが存在しない場合
+            print(f"Index '{index_name}' does not exist. Creating with 0 replicas...")
+            settings = {
+                "settings": {
+                    "number_of_replicas": 0
+                }
+            }
+            create_response = requests.put(index_url, json=settings)
+            create_response.raise_for_status()
+            print(f"Index '{index_name}' created successfully with 0 replicas.")
+        elif response.status_code == 200:
+            print(f"Index '{index_name}' already exists.")
+        else:
+            print(f"Unexpected status code when checking index '{index_name}': {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error checking/creating index '{index_name}': {e}")
 
 def generate_bulk_payload(file_path, index_name):
     """
@@ -70,6 +94,8 @@ def main():
     """
     メイン処理。chat_logsディレクトリ内のJSONファイルを並列で処理する。
     """
+    create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)
+
     if not os.path.isdir(CHAT_LOGS_DIR):
         print(f"Error: Directory not found at '{CHAT_LOGS_DIR}'")
         return

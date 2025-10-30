@@ -1,8 +1,30 @@
-from fastapi import FastAPI
+import os
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from elasticsearch import Elasticsearch
 from typing import List, Dict, Any
 
+# 環境変数からElasticsearchのホストを取得
+ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
+
 app = FastAPI()
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    アプリケーション起動時にElasticsearchへの接続を確立する。
+    """
+    try:
+        es = Elasticsearch(ELASTICSEARCH_HOST)
+        if es.ping():
+            print("Successfully connected to Elasticsearch.")
+            app.state.es = es
+        else:
+            print("Failed to connect to Elasticsearch: ping failed.")
+            app.state.es = None
+    except Exception as e:
+        print(f"Error connecting to Elasticsearch during startup: {e}")
+        app.state.es = None
 
 # CORSミドルウェアの設定
 origins = [
@@ -22,43 +44,48 @@ def read_root():
     return {"message": "Utsulog API"}
 
 @app.get("/search")
-def search_chat_logs(q: str = ""):
+def search_chat_logs(q: str = "", request: Request = None):
     """
-    チャットログを検索するエンドポイント。
-    現時点ではダミーデータを返します。
+    Elasticsearchを使用してチャットログを検索するエンドポイント。
     """
+    es = request.app.state.es
+    if es is None:
+        raise HTTPException(status_code=503, detail="Elasticsearch service is unavailable.")
+
     if not q:
         return []
 
-    # フロントエンドで使うためのダミーデータ
-    dummy_data = [
-        {
-            "id": "1",
-            "video_id": "sample_video_A",
-            "timestamp_sec": 5025,
-            "author": "サンプルユーザー1",
-            "message": f"「{q}」の検索結果メッセージ1。お疲れ様でした！",
-            "video_title": "サンプル動画A",
-            "thumbnail_url": "https://placehold.co/400x225/334155/e2e8f0?text=Thumbnail [1:23:45]"
+    # Elasticsearchの検索クエリ
+    search_query = {
+        "query": {
+            "multi_match": {
+                "query": q,
+                "fields": ["message", "author"]
+            }
         },
-        {
-            "id": "2",
-            "video_id": "sample_video_B",
-            "timestamp_sec": 920,
-            "author": "長めの名前のユーザーさん",
-            "message": f"この瞬間の「{q}」が一番好き 😂",
-            "video_title": "サンプル動画B",
-            "thumbnail_url": "https://placehold.co/400x225/1e293b/e2e8f0?text=Thumbnail [0:15:20]"
-        },
-        {
-            "id": "3",
-            "video_id": "sample_video_A",
-            "timestamp_sec": 11111,
-            "author": "サンプルユーザー3",
-            "message": f"長時間配信お疲れ様でした！「{q}」も最高でした！",
-            "video_title": "サンプル動画A",
-            "thumbnail_url": "https://placehold.co/400x225/4b5563/e2e8f0?text=Thumbnail [3:05:11]"
-        }
-    ]
-    
-    return dummy_data
+        "size": 100 # 最大100件まで取得
+    }
+
+    try:
+        response = es.search(index="youtube-chat-logs", body=search_query)
+        
+        # フロントエンド向けの形式にレスポンスを整形
+        results = []
+        for hit in response["hits"]["hits"]:
+            source = hit["_source"]
+            result = {
+                "id": hit["_id"],
+                "video_id": source.get("video_id"),
+                "timestamp_sec": source.get("timestamp_sec"),
+                "author": source.get("author"),
+                "message": source.get("message"),
+                "video_title": source.get("video_title"),
+                "thumbnail_url": source.get("thumbnail_url")
+            }
+            results.append(result)
+            
+        return results
+
+    except Exception as e:
+        print(f"検索中にエラーが発生しました: {e}")
+        raise HTTPException(status_code=500, detail="検索処理中にエラーが発生しました。")

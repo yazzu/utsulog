@@ -11,6 +11,11 @@ services:
       - "9300:9300"
     volumes:
       - esdata:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.1
@@ -28,7 +33,11 @@ services:
       - "8000:8000"
     volumes:
       - ./api:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    restart: on-failure
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
@@ -37,6 +46,15 @@ services:
     volumes:
       - ./frontend:/app
     command: npm run dev
+
+  batch:
+    build: ./api
+    volumes:
+      - ./batch:/app/batch
+      - ./chat_logs:/app/chat_logs
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
 
 volumes:
   esdata:
