@@ -86,8 +86,8 @@ def get_video_details(youtube, video_ids):
         videos_response = videos_request.execute()
 
         for item in videos_response.get('items', []):
-            # ライブ配信の詳細情報がないものは除外
-            if 'liveStreamingDetails' not in item:
+            # ライブ配信の詳細情報がない、または配信が終了していないものは除外
+            if 'liveStreamingDetails' not in item or 'actualEndTime' not in item['liveStreamingDetails']:
                 continue
 
             title = item['snippet']['title']
