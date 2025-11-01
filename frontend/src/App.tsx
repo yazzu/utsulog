@@ -41,6 +41,8 @@ function App() {
   const [hasMore, setHasMore] = useState(true);
   const [isExactMatch, setIsExactMatch] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // デバウンスされたAPIリクエスト
   const debouncedSearch = useCallback((query: string, reset: boolean = false) => {
@@ -59,7 +61,15 @@ function App() {
     }
 
     setIsLoading(true);
-    axios.get(`http://localhost:8000/search?q=${encodeURIComponent(query)}&from_=${reset ? 0 : from}&exact=${isExactMatch}`)
+    const params = new URLSearchParams({
+      q: query,
+      from_: (reset ? 0 : from).toString(),
+      exact: isExactMatch.toString(),
+    });
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+
+    axios.get(`http://localhost:8000/search?${params.toString()}`)
       .then(response => {
         const { total, results } = response.data;
         if (results.length === 0) {
@@ -78,7 +88,7 @@ function App() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [from, isExactMatch]);
+  }, [from, isExactMatch, dateFrom, dateTo]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -89,7 +99,7 @@ function App() {
       clearTimeout(handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, isExactMatch]);
+  }, [searchQuery, isExactMatch, dateFrom, dateTo]);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -119,14 +129,28 @@ function App() {
         
         {/* Date Filter */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-600 uppercase">動画投稿日</h3>
+          <h3 className="text-sm font-semibold text-slate-600 uppercase">コメント投稿日</h3>
           <div>
             <label htmlFor="date-from" className="block text-sm font-medium text-slate-700 mb-1">From</label>
-            <input type="date" id="date-from" name="date-from" className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+            <input 
+              type="date" 
+              id="date-from" 
+              name="date-from" 
+              className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
           </div>
           <div>
             <label htmlFor="date-to" className="block text-sm font-medium text-slate-700 mb-1">To</label>
-            <input type="date" id="date-to" name="date-to" className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+            <input 
+              type="date" 
+              id="date-to" 
+              name="date-to" 
+              className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
           </div>
         </div>
 
