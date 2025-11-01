@@ -43,39 +43,73 @@ app.add_middleware(
 def read_root():
     return {"message": "Utsulog API"}
 
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
+
+# (...中略...)
+
 @app.get("/search")
-def search_chat_logs(q: str = "", from_: int = 0, exact: bool = False, request: Request = None):
+def search_chat_logs(
+    q: str = "", 
+    from_: int = 0, 
+    exact: bool = False, 
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    request: Request = None
+):
     """
     Elasticsearchを使用してチャットログを検索するエンドポイント。
-    `from_` パラメータによるページネーションをサポート。
-    `exact` パラメータにより、match_phrase (完全一致) クエリに切り替え可能。
+    ページネーション、完全一致検索、日付範囲フィルターをサポート。
     """
     es = request.app.state.es
     if es is None:
         raise HTTPException(status_code=503, detail="Elasticsearch service is unavailable.")
 
     if not q:
-        return []
+        return {"total": 0, "results": []}
 
-    # exact パラメータに応じてクエリを切り替える
+    # キーワード検索のクエリ部分
     if exact:
-        query_body = {
+        must_query = {
             "match_phrase": {
                 "message": q
             }
         }
     else:
-        query_body = {
+        must_query = {
             "multi_match": {
                 "query": q,
                 "fields": ["message", "author"]
             }
         }
 
-    # Elasticsearchの検索クエリ
+    # 日付範囲フィルターの部分 (timestampフィールドを使用)
+    filters = []
+    if date_from:
+        try:
+            dt_from = datetime.fromisoformat(date_from)
+            ts_from = int(dt_from.timestamp() * 1000)
+            filters.append({"range": {"timestamp": {"gte": ts_from}}})
+        except ValueError:
+            pass # 不正な日付形式は無視
+    if date_to:
+        try:
+            # 指定日の終わりまで含めるため、次の日の0時より小さい範囲を指定
+            dt_to = datetime.fromisoformat(date_to) + timedelta(days=1)
+            ts_to = int(dt_to.timestamp() * 1000)
+            filters.append({"range": {"timestamp": {"lt": ts_to}}})
+        except ValueError:
+            pass # 不正な日付形式は無視
+
+    # Elasticsearchの検索クエリ全体を構築
     search_query = {
         "from": from_,
-        "query": query_body,
+        "query": {
+            "bool": {
+                "must": must_query,
+                "filter": filters
+            }
+        },
         "sort": [
             {
                 "datetime.keyword": {
