@@ -235,21 +235,24 @@ function App() {
             {searchResults.length > 0 ? (
               searchResults.map((result) => (
                 <div key={result.id} className="relative group">
-                  <div className="bg-white p-5 rounded-lg shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <img src={`https://placehold.co/40x40/cbd5e1/475569?text=${result.author.charAt(0)}`} alt={`${result.author} Avatar`} className="w-10 h-10 rounded-full" />
-                        <div>
-                          <p className="font-semibold text-slate-800">{result.author}</p>
-                          <p className="text-sm text-slate-500">動画: 「{result.videoTitle}」</p>
-                          <p className="text-sm text-slate-500">投稿日: {result.datetime}</p>
+                  <div className="relative rounded-lg overflow-hidden">
+                    <div className="absolute inset-0 bg-cover bg-center bg-no-repeat filter grayscale" style={{ backgroundImage: `url(${result.thumbnailUrl})` }}></div>
+                    <div className="relative bg-white/80 p-5 shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <img src={`https://placehold.co/40x40/cbd5e1/475569?text=${result.author.charAt(0)}`} alt={`${result.author} Avatar`} className="w-10 h-10 rounded-full" />
+                          <div>
+                            <p className="font-semibold text-slate-800">{result.author}</p>
+                            <p className="text-sm text-slate-500">動画: 「{result.videoTitle}」</p>
+                            <p className="text-sm text-slate-500">投稿日: {result.datetime}</p>
+                          </div>
                         </div>
+                        <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                          {formatTimestamp(result.elapsedTime)}
+                        </span>
                       </div>
-                      <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                        {formatTimestamp(result.elapsedTime)}
-                      </span>
+                      <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: result.message.replace(new RegExp(searchQuery, "gi"), (match) => `<span class="font-bold text-blue-600">${match}</span>`) }} />
                     </div>
-                    <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: result.message.replace(new RegExp(searchQuery, "gi"), (match) => `<span class="font-bold text-blue-600">${match}</span>`) }} />
                   </div>
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:bottom-full transition-all duration-200 ease-in-out z-20">
                     <div className="bg-black bg-opacity-90 text-white rounded-lg shadow-xl overflow-hidden">

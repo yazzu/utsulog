@@ -7,6 +7,7 @@ from typing import List, Dict, Any
 
 # 環境変数からElasticsearchのホストを取得
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
+THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL", "http://localhost:8000/thumbnails")
 
 app = FastAPI()
 
@@ -41,7 +42,7 @@ def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
         filename = f"{video_id}_{timestamp_str}.jpg"
         
         # APIサーバーのURLをベースにサムネイルURLを構築
-        return f"http://localhost:8000/thumbnails/{filename}"
+        return f"{THUMBNAIL_BASE_URL}/{filename}"
 
     except (ValueError, IndexError):
         return ""

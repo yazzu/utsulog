@@ -34,6 +34,8 @@ services:
     volumes:
       - ./api:/app
       - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails
+    environment:
+      - THUMBNAIL_BASE_URL=http://localhost:8000/thumbnails
     command: uvicorn main:app --host 0.0.0.0 --port 8000
     restart: on-failure
     depends_on:
@@ -54,6 +56,8 @@ services:
       - ./batch:/app/batch
       - ./chat_logs:/app/chat_logs
       - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails
+    environment:
+      - THUMBNAIL_BASE_URL=http://localhost:8000/thumbnails
     depends_on:
       elasticsearch:
         condition: service_healthy
