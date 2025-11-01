@@ -33,6 +33,7 @@ services:
       - "8000:8000"
     volumes:
       - ./api:/app
+      - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails
     command: uvicorn main:app --host 0.0.0.0 --port 8000
     restart: on-failure
     depends_on:
@@ -52,6 +53,7 @@ services:
     volumes:
       - ./batch:/app/batch
       - ./chat_logs:/app/chat_logs
+      - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails
     depends_on:
       elasticsearch:
         condition: service_healthy

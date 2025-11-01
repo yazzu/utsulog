@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from elasticsearch import Elasticsearch
 from typing import List, Dict, Any
@@ -8,6 +9,42 @@ from typing import List, Dict, Any
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
 
 app = FastAPI()
+
+# 静的ファイル（サムネイル画像）を配信するためのマウント
+app.mount("/thumbnails", StaticFiles(directory="/thumbnails"), name="thumbnails")
+
+def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
+    """
+    videoIdとelapsedTimeからサムネイル画像のURLを生成する。
+    elapsedTimeは3分ごとに切り捨てられる。
+    """
+    if not video_id or not elapsed_time:
+        return ""
+
+    try:
+        parts = list(map(int, elapsed_time.split(':')))
+        seconds = 0
+        if len(parts) == 3:
+            seconds = parts[0] * 3600 + parts[1] * 60 + parts[2]
+        elif len(parts) == 2:
+            seconds = parts[0] * 60 + parts[1]
+        elif len(parts) == 1:
+            seconds = parts[0]
+
+        # 3分（180秒）単位で切り捨て
+        rounded_seconds = (seconds // 180) * 180
+        
+        m, s = divmod(rounded_seconds, 60)
+        h, m = divmod(m, 60)
+        
+        timestamp_str = f"{h:02d}{m:02d}{s:02d}"
+        filename = f"{video_id}_{timestamp_str}.jpg"
+        
+        # APIサーバーのURLをベースにサムネイルURLを構築
+        return f"http://localhost:8000/thumbnails/{filename}"
+
+    except (ValueError, IndexError):
+        return ""
 
 @app.on_event("startup")
 async def startup_event():
@@ -133,6 +170,9 @@ def search_chat_logs(
         results = []
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
+            
+            thumbnail_url = calculate_thumbnail_url(source.get("videoId"), source.get("elapsedTime"))
+
             result = {
                 "id": hit["_id"],
                 "videoId": source.get("videoId"),
@@ -143,6 +183,7 @@ def search_chat_logs(
                 "message": source.get("message"),
                 "author": source.get("authorName"),
                 "authorChannelId": source.get("authorChannelId"),
+                "thumbnailUrl": thumbnail_url,
             }
             results.append(result)
             
