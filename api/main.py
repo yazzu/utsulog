@@ -55,6 +55,7 @@ def search_chat_logs(
     exact: bool = False, 
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
+    author_name: Optional[str] = None,
     request: Request = None
 ):
     """
@@ -65,23 +66,22 @@ def search_chat_logs(
     if es is None:
         raise HTTPException(status_code=503, detail="Elasticsearch service is unavailable.")
 
-    if not q:
-        return {"total": 0, "results": []}
-
+    must_clauses = []
     # キーワード検索のクエリ部分
-    if exact:
-        must_query = {
-            "match_phrase": {
-                "message": q
-            }
-        }
-    else:
-        must_query = {
-            "multi_match": {
-                "query": q,
-                "fields": ["message", "author"]
-            }
-        }
+    if q:
+        if exact:
+            must_clauses.append({
+                "match_phrase": {
+                    "message": q
+                }
+            })
+        else:
+            must_clauses.append({
+                "multi_match": {
+                    "query": q,
+                    "fields": ["message", "author"]
+                }
+            })
 
     # 日付範囲フィルターの部分 (timestampフィールドを使用)
     filters = []
@@ -101,12 +101,15 @@ def search_chat_logs(
         except ValueError:
             pass # 不正な日付形式は無視
 
+    if author_name:
+        filters.append({"term": {"authorName.keyword": author_name}})
+
     # Elasticsearchの検索クエリ全体を構築
     search_query = {
         "from": from_,
         "query": {
             "bool": {
-                "must": must_query,
+                "must": must_clauses,
                 "filter": filters
             }
         },

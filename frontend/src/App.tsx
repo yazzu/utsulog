@@ -43,10 +43,11 @@ function App() {
   const [totalResults, setTotalResults] = useState(0);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [authorName, setAuthorName] = useState('');
 
   // デバウンスされたAPIリクエスト
   const debouncedSearch = useCallback((query: string, reset: boolean = false) => {
-    if (query.trim() === '') {
+    if (query.trim() === '' && authorName.trim() === '') {
       setSearchResults([]);
       setFrom(0);
       setHasMore(true);
@@ -68,6 +69,7 @@ function App() {
     });
     if (dateFrom) params.append('date_from', dateFrom);
     if (dateTo) params.append('date_to', dateTo);
+    if (authorName) params.append('author_name', authorName);
 
     axios.get(`http://localhost:8000/search?${params.toString()}`)
       .then(response => {
@@ -88,7 +90,7 @@ function App() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [from, isExactMatch, dateFrom, dateTo]);
+  }, [from, isExactMatch, dateFrom, dateTo, authorName]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -99,7 +101,7 @@ function App() {
       clearTimeout(handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, isExactMatch, dateFrom, dateTo]);
+  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName]);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -158,24 +160,18 @@ function App() {
         <div className="mt-8">
           <h3 className="text-sm font-semibold text-slate-600 uppercase mb-4">投稿者名</h3>
           <div className="relative">
-            <input type="text" id="author-search" name="author-search" placeholder="投稿者名で検索..." className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm" />
+            <input 
+              type="text" 
+              id="author-search" 
+              name="author-search" 
+              placeholder="投稿者名で検索..." 
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              value={authorName}
+              onChange={(e) => setAuthorName(e.target.value)}
+            />
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg className="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </div>
-          </div>
-          <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-              <span className="text-sm text-slate-700">サンプルユーザー1</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-              <span className="text-sm text-slate-700">サンプルユーザー2</span>
-            </label>
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-              <span className="text-sm text-slate-700">長めの名前のユーザーさん</span>
-            </label>
           </div>
         </div>
       </aside>
