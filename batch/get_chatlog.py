@@ -47,6 +47,7 @@ def main():
                     for c in chat.get().items:
                         chat_data = {
                             "videoId": video_id,
+                            "videoTitle": title,
                             "datetime": c.datetime,
                             "elapsedTime": c.elapsedTime,
                             "timestamp": c.timestamp,

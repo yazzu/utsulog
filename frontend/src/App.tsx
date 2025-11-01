@@ -4,20 +4,32 @@ import axios from 'axios';
 // APIから返される検索結果の型定義
 interface SearchResult {
   id: string;
-  video_id: string;
-  timestamp_sec: number;
+  videoId: string;
+  datetime: string;
+  elapsedTime: string;
   author: string;
   message: string;
-  video_title: string;
-  thumbnail_url: string;
+  videoTitle: string;
+  thumbnailUrl: string;
 }
 
-// 秒を hh:mm:ss 形式に変換するヘルパー関数
-const formatTimestamp = (seconds: number): string => {
-  const h = Math.floor(seconds / 3600).toString();
-  const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
-  const s = Math.floor(seconds % 60).toString().padStart(2, '0');
-  return `${h}:${m}:${s}`;
+// elapsedTime (hh:mm:ss) を秒に変換するヘルパー関数
+const elapsedTimeSeconds = (elapsedTime: string): number => {
+  const parts = elapsedTime.split(':').map(Number);
+  let seconds = 0;
+  if (parts.length === 3) {
+    seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+  } else if (parts.length === 2) {
+    seconds = parts[0] * 60 + parts[1];
+  } else if (parts.length === 1) {
+    seconds = parts[0];
+  }
+  return seconds;
+};
+
+// hh:mm:ss 形式に変換するヘルパー関数
+const formatTimestamp = (elapsedTime: string): string => {
+  return elapsedTime;
 };
 
 function App() {
@@ -154,23 +166,24 @@ function App() {
                         <img src={`https://placehold.co/40x40/cbd5e1/475569?text=${result.author.charAt(0)}`} alt={`${result.author} Avatar`} className="w-10 h-10 rounded-full" />
                         <div>
                           <p className="font-semibold text-slate-800">{result.author}</p>
-                          <p className="text-sm text-slate-500">動画: 「{result.video_title}」</p>
+                          <p className="text-sm text-slate-500">動画: 「{result.videoTitle}」</p>
+                          <p className="text-sm text-slate-500">投稿日: {result.datetime}</p>
                         </div>
                       </div>
                       <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                        {formatTimestamp(result.timestamp_sec)}
+                        {formatTimestamp(result.elapsedTime)}
                       </span>
                     </div>
                     <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: result.message.replace(new RegExp(searchQuery, "gi"), (match) => `<span class="font-bold text-blue-600">${match}</span>`) }} />
                   </div>
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:bottom-full transition-all duration-200 ease-in-out z-20">
                     <div className="bg-black bg-opacity-90 text-white rounded-lg shadow-xl overflow-hidden">
-                      <img src={result.thumbnail_url} alt={`Video thumbnail at ${formatTimestamp(result.timestamp_sec)}`} className="w-full h-auto" />
+                      <img src={result.thumbnailUrl} alt={`Video thumbnail at ${formatTimestamp(result.elapsedTime)}`} className="w-full h-auto" />
                       <div className="p-3">
-                        <p className="text-sm font-semibold mb-1">{result.video_title}</p>
-                        <a href={`https://www.youtube.com/watch?v=${result.video_id}&t=${result.timestamp_sec}s`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
+                        <p className="text-sm font-semibold mb-1">{result.videoTitle}</p>
+                        <a href={`https://www.youtube.com/watch?v=${result.videoId}&t=${elapsedTimeSeconds(result.elapsedTime)}s`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
                           <svg className="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                          <span>{formatTimestamp(result.timestamp_sec)} から再生</span>
+                          <span>{formatTimestamp(result.elapsedTime)} から再生</span>
                         </a>
                       </div>
                     </div>

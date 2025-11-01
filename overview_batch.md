@@ -25,6 +25,7 @@
             - elasticsearch 投入用 JSON
                 {
                     videoId (文字列):そのチャットが投稿されたVideoのID
+                    videoTitle (文字列):そのチャットが投稿されたVideo title
                     datetime (文字列):そのチャットが投稿された現実の日時 (例: 2024-10-19 17:00:05)
                     elapsedTime (文字列):ご要望の「動画のタイムスタンプ」です。
                     timestamp (整数):動画開始時点からの経過時間（ミリ秒） (例: 125000)

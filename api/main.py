@@ -75,12 +75,14 @@ def search_chat_logs(q: str = "", request: Request = None):
             source = hit["_source"]
             result = {
                 "id": hit["_id"],
-                "video_id": source.get("video_id"),
-                "timestamp_sec": source.get("timestamp_sec"),
-                "author": source.get("author"),
+                "videoId": source.get("videoId"),
+                "videoTitle": source.get("videoTitle"),
+                "datetime": source.get("datetime"),
+                "elapsedTime": source.get("elapsedTime"),
+                "timestampSec": source.get("timestamp"),
                 "message": source.get("message"),
-                "video_title": source.get("video_title"),
-                "thumbnail_url": source.get("thumbnail_url")
+                "author": source.get("authorName"),
+                "authorChannelId": source.get("authorChannelId"),
             }
             results.append(result)
             
