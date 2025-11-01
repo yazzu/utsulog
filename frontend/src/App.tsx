@@ -37,36 +37,73 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [from, setFrom] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isExactMatch, setIsExactMatch] = useState(false);
 
   // デバウンスされたAPIリクエスト
-  const debouncedSearch = useCallback((query: string) => {
+  const debouncedSearch = useCallback((query: string, reset: boolean = false) => {
     if (query.trim() === '') {
       setSearchResults([]);
+      setFrom(0);
+      setHasMore(true);
       return;
     }
+    
+    if (reset) {
+      setSearchResults([]);
+      setFrom(0);
+      setHasMore(true);
+    }
+
     setIsLoading(true);
-    axios.get(`http://localhost:8000/search?q=${encodeURIComponent(query)}`)
+    axios.get(`http://localhost:8000/search?q=${encodeURIComponent(query)}&from_=${reset ? 0 : from}&exact=${isExactMatch}`)
       .then(response => {
-        setSearchResults(response.data);
+        if (response.data.length === 0) {
+          setHasMore(false);
+        } else {
+          setSearchResults(prevResults => reset ? response.data : [...prevResults, ...response.data]);
+          setFrom(prevFrom => prevFrom + response.data.length);
+        }
       })
       .catch(error => {
         console.error("Error fetching search results:", error);
-        // ここでエラーハンドリングUIを出すことも可能
       })
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }, [from, isExactMatch]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      debouncedSearch(searchQuery);
+      debouncedSearch(searchQuery, true); // 新しい検索なのでリセット
     }, 300); // 300msのデバウンス
 
     return () => {
       clearTimeout(handler);
     };
-  }, [searchQuery, debouncedSearch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, isExactMatch]);
+
+  useEffect(() => {
+    const mainElement = document.querySelector('main');
+    if (!mainElement) return;
+
+    const handleScroll = () => {
+      if (
+        mainElement.scrollHeight - mainElement.scrollTop <= mainElement.clientHeight + 50 &&
+        !isLoading &&
+        hasMore
+      ) {
+        debouncedSearch(searchQuery, false); // 追加読み込み
+      }
+    };
+
+    mainElement.addEventListener('scroll', handleScroll);
+    return () => {
+      mainElement.removeEventListener('scroll', handleScroll);
+    };
+  }, [isLoading, hasMore, searchQuery, debouncedSearch]);
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -117,8 +154,8 @@ function App() {
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
           <header className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">チャットログ検索</h1>
-            <p className="text-slate-600">YouTube動画のチャットログを横断検索します。</p>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">うつろぐ！</h1>
+            <p className="text-slate-600">Utsuro CH. 氷室うつろのチャットログを検索できるよ。</p>
 
             {/* Search Box */}
             <div className="mt-6 relative">
@@ -149,12 +186,24 @@ function App() {
                 </div>
               )}
             </div>
+            {/* Exact Match Toggle */}
+            <div className="flex justify-end mt-2 mr-4">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  checked={isExactMatch}
+                  onChange={(e) => setIsExactMatch(e.target.checked)}
+                />
+                <span className="text-sm text-slate-600">完全一致で検索</span>
+              </label>
+            </div>
           </header>
 
           {/* Search Results */}
           <section className="space-y-4">
             <h3 className="text-lg font-semibold text-slate-800">
-              検索結果 ({isLoading ? '検索中...' : `${searchResults.length}件`})
+              検索結果 ({searchResults.length}件)
             </h3>
 
             {searchResults.length > 0 ? (
@@ -192,9 +241,11 @@ function App() {
               ))
             ) : (
               <div className="text-center py-12 text-slate-500">
-                {searchQuery ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。'}
+                {isLoading ? '検索中...' : (searchQuery ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。')}
               </div>
             )}
+            {isLoading && <div className="text-center py-4">読み込み中...</div>}
+            {!hasMore && searchResults.length > 0 && <div className="text-center py-4 text-slate-500">これ以上検索結果はありません。</div>}
           </section>
         </div>
       </main>

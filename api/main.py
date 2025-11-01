@@ -44,9 +44,11 @@ def read_root():
     return {"message": "Utsulog API"}
 
 @app.get("/search")
-def search_chat_logs(q: str = "", request: Request = None):
+def search_chat_logs(q: str = "", from_: int = 0, exact: bool = False, request: Request = None):
     """
     Elasticsearchを使用してチャットログを検索するエンドポイント。
+    `from_` パラメータによるページネーションをサポート。
+    `exact` パラメータにより、match_phrase (完全一致) クエリに切り替え可能。
     """
     es = request.app.state.es
     if es is None:
@@ -55,15 +57,33 @@ def search_chat_logs(q: str = "", request: Request = None):
     if not q:
         return []
 
-    # Elasticsearchの検索クエリ
-    search_query = {
-        "query": {
+    # exact パラメータに応じてクエリを切り替える
+    if exact:
+        query_body = {
+            "match_phrase": {
+                "message": q
+            }
+        }
+    else:
+        query_body = {
             "multi_match": {
                 "query": q,
                 "fields": ["message", "author"]
             }
-        },
-        "size": 100 # 最大100件まで取得
+        }
+
+    # Elasticsearchの検索クエリ
+    search_query = {
+        "from": from_,
+        "query": query_body,
+        "sort": [
+            {
+                "datetime.keyword": {
+                    "order": "desc"
+                }
+            }
+        ],
+        "size": 100 # 1回あたりの取得件数
     }
 
     try:
