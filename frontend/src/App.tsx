@@ -40,6 +40,7 @@ function App() {
   const [from, setFrom] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isExactMatch, setIsExactMatch] = useState(false);
+  const [totalResults, setTotalResults] = useState(0);
 
   // デバウンスされたAPIリクエスト
   const debouncedSearch = useCallback((query: string, reset: boolean = false) => {
@@ -47,6 +48,7 @@ function App() {
       setSearchResults([]);
       setFrom(0);
       setHasMore(true);
+      setTotalResults(0);
       return;
     }
     
@@ -59,11 +61,15 @@ function App() {
     setIsLoading(true);
     axios.get(`http://localhost:8000/search?q=${encodeURIComponent(query)}&from_=${reset ? 0 : from}&exact=${isExactMatch}`)
       .then(response => {
-        if (response.data.length === 0) {
+        const { total, results } = response.data;
+        if (results.length === 0) {
           setHasMore(false);
         } else {
-          setSearchResults(prevResults => reset ? response.data : [...prevResults, ...response.data]);
-          setFrom(prevFrom => prevFrom + response.data.length);
+          setSearchResults(prevResults => reset ? results : [...prevResults, ...results]);
+          setFrom(prevFrom => prevFrom + results.length);
+        }
+        if (reset) {
+          setTotalResults(total);
         }
       })
       .catch(error => {
@@ -203,7 +209,7 @@ function App() {
           {/* Search Results */}
           <section className="space-y-4">
             <h3 className="text-lg font-semibold text-slate-800">
-              検索結果 ({searchResults.length}件)
+              検索結果 ({totalResults.toLocaleString()}件)
             </h3>
 
             {searchResults.length > 0 ? (

@@ -89,6 +89,9 @@ def search_chat_logs(q: str = "", from_: int = 0, exact: bool = False, request: 
     try:
         response = es.search(index="youtube-chat-logs", body=search_query)
         
+        # 総ヒット件数を取得
+        total_hits = response["hits"]["total"]["value"]
+        
         # フロントエンド向けの形式にレスポンスを整形
         results = []
         for hit in response["hits"]["hits"]:
@@ -106,7 +109,7 @@ def search_chat_logs(q: str = "", from_: int = 0, exact: bool = False, request: 
             }
             results.append(result)
             
-        return results
+        return {"total": total_hits, "results": results}
 
     except Exception as e:
         print(f"検索中にエラーが発生しました: {e}")
