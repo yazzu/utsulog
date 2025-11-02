@@ -1,6 +1,6 @@
 
 import os
-import csv
+import json
 from datetime import datetime
 from googleapiclient.discovery import build
 
@@ -10,7 +10,7 @@ API_KEY_FILE = 'api_key.txt'
 # 対象のチャンネルID
 CHANNEL_ID = 'UC64MV1Dfq3prs9CccXg09rQ'  # 氷室うつろさん
 # 出力ファイル名
-OUTPUT_TSV = 'utsuro_himuro_streams.tsv'
+OUTPUT_NDJSON = 'videos_log/videos.ndjson'
 
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'
@@ -112,23 +112,17 @@ def get_video_details(youtube, video_ids):
     print(f"Got details for {len(video_details)} videos.")
     return video_details
 
-def write_to_tsv(video_details, file_path):
+def write_to_ndjson(video_details, file_path):
     """
-    動画詳細情報のリストをTSVファイルに書き込む
+    動画詳細情報のリストをNDJSONファイルに書き込む
     """
     if not video_details:
         print("No video details to write.")
         return
 
-    with open(file_path, 'w', newline='', encoding='utf-8') as tsvfile:
-        # overview_batch.md のカラム順に合わせる
-        fieldnames = ['title', 'video_url', 'thumnail_url', 'publishedAt']
-        writer = csv.DictWriter(tsvfile, fieldnames=fieldnames, delimiter='	')
-
-        writer.writeheader()
-        
+    with open(file_path, 'w', encoding='utf-8') as ndjsonfile:
         for video in video_details:
-            writer.writerow(video)
+            ndjsonfile.write(json.dumps(video, ensure_ascii=False) + '\n')
             
     print(f"Successfully wrote data to {file_path}")
 
@@ -153,8 +147,8 @@ def main():
     # 2. 各動画の詳細情報を取得
     video_details = get_video_details(youtube, video_ids)
 
-    # 3. TSVファイルに書き込み
-    write_to_tsv(video_details, OUTPUT_TSV)
+    # 3. NDJSONファイルに書き込み
+    write_to_ndjson(video_details, OUTPUT_NDJSON)
 
 if __name__ == '__main__':
     main()

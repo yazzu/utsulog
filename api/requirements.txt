@@ -1,4 +1,4 @@
 fastapi
 uvicorn
-elasticsearch==8.11.1
-requests
+elasticsearch
+google-api-python-client

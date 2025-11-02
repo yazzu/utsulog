@@ -53,11 +53,11 @@ services:
   batch:
     build: ./api
     volumes:
-      - ./batch:/app/batch
-      - ./chat_logs:/app/chat_logs
+      - .:/app
       - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails
     environment:
       - THUMBNAIL_BASE_URL=http://localhost:8000/thumbnails
+    command: tail -f /dev/null
     depends_on:
       elasticsearch:
         condition: service_healthy
