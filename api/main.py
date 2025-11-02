@@ -3,7 +3,8 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from elasticsearch import Elasticsearch
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
 
 # 環境変数からElasticsearchのホストを取得
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
@@ -81,10 +82,47 @@ app.add_middleware(
 def read_root():
     return {"message": "Utsulog API"}
 
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+@app.get("/videos")
+def get_videos(request: Request):
+    """
+    Elasticsearchから動画のリストを取得するエンドポイント。
+    """
+    es = request.app.state.es
+    if es is None:
+        raise HTTPException(status_code=503, detail="Elasticsearch service is unavailable.")
 
-# (...中略...)
+    search_query = {
+        "query": {
+            "match_all": {}
+        },
+        "sort": [
+            {
+                "publishedAt.keyword": {
+                    "order": "desc"
+                }
+            }
+        ],
+        "size": 1000 # 取得する動画の最大数
+    }
+
+    try:
+        response = es.search(index="videos", body=search_query)
+        
+        videos = []
+        for hit in response["hits"]["hits"]:
+            source = hit["_source"]
+            video = {
+                "id": hit["_id"],
+                "title": source.get("title"),
+                "thumbnail_url": source.get("thumnail_url"),
+            }
+            videos.append(video)
+            
+        return {"videos": videos}
+
+    except Exception as e:
+        print(f"動画リストの取得中にエラーが発生しました: {e}")
+        raise HTTPException(status_code=500, detail="動画リストの取得中にエラーが発生しました。")
 
 @app.get("/search")
 def search_chat_logs(
@@ -94,11 +132,12 @@ def search_chat_logs(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     author_name: Optional[str] = None,
+    video_id: Optional[str] = None,
     request: Request = None
 ):
     """
     Elasticsearchを使用してチャットログを検索するエンドポイント。
-    ページネーション、完全一致検索、日付範囲フィルターをサポート。
+    ページネーション、完全一致検索、日付範囲フィルター、動画IDフィルターをサポート。
     """
     es = request.app.state.es
     if es is None:
@@ -121,7 +160,7 @@ def search_chat_logs(
                 }
             })
 
-    # 日付範囲フィルターの部分 (timestampフィールドを使用)
+    # フィルターの部分
     filters = []
     if date_from:
         try:
@@ -141,6 +180,9 @@ def search_chat_logs(
 
     if author_name:
         filters.append({"term": {"authorName.keyword": author_name}})
+
+    if video_id:
+        filters.append({"term": {"videoId.keyword": video_id}})
 
     # Elasticsearchの検索クエリ全体を構築
     search_query = {

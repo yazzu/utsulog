@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
+// APIから返される動画の型定義
+interface Video {
+  id: string;
+  title: string;
+  thumbnail_url: string;
+}
+
 // APIから返される検索結果の型定義
 interface SearchResult {
   id: string;
@@ -49,14 +56,27 @@ function App() {
   const [dateTo, setDateTo] = useState('');
   const [authorName, setAuthorName] = useState('');
   const [customEmojis, setCustomEmojis] = useState<string[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
   }, []);
 
+  // 動画一覧を取得
+  useEffect(() => {
+    axios.get('http://localhost:8000/videos')
+      .then(response => {
+        setVideos(response.data.videos);
+      })
+      .catch(error => {
+        console.error("Error fetching videos:", error);
+      });
+  }, []);
+
   // デバウンスされたAPIリクエスト
   const debouncedSearch = useCallback((query: string, reset: boolean = false) => {
-    if (query.trim() === '' && authorName.trim() === '') {
+    if (query.trim() === '' && authorName.trim() === '' && !selectedVideoId) {
       setSearchResults([]);
       setFrom(0);
       setHasMore(true);
@@ -79,6 +99,7 @@ function App() {
     if (dateFrom) params.append('date_from', dateFrom);
     if (dateTo) params.append('date_to', dateTo);
     if (authorName) params.append('author_name', authorName);
+    if (selectedVideoId) params.append('video_id', selectedVideoId);
 
     axios.get(`http://localhost:8000/search?${params.toString()}`)
       .then(response => {
@@ -99,7 +120,7 @@ function App() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [from, isExactMatch, dateFrom, dateTo, authorName]);
+  }, [from, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -110,7 +131,7 @@ function App() {
       clearTimeout(handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName]);
+  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId]);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -182,6 +203,40 @@ function App() {
               <svg className="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </div>
           </div>
+        </div>
+
+        {/* Video Filter */}
+        <div className="mt-8">
+          <h3 className="text-sm font-semibold text-slate-600 uppercase mb-4">動画で絞り込み</h3>
+          <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
+            {videos.map((video) => (
+              <button
+                key={video.id}
+                onClick={() => setSelectedVideoId(video.id === selectedVideoId ? null : video.id)}
+                className={`relative rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                  selectedVideoId === video.id ? 'ring-2 ring-blue-500' : ''
+                }`}
+                title={video.title}
+              >
+                <img src={video.thumbnail_url} alt={video.title} className="w-full h-auto object-cover transition-transform duration-200 hover:scale-105" />
+                {selectedVideoId === video.id && (
+                  <div className="absolute inset-0 bg-blue-500 bg-opacity-50 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+          {selectedVideoId && (
+            <button
+              onClick={() => setSelectedVideoId(null)}
+              className="mt-4 w-full text-sm text-center text-slate-600 hover:text-blue-600"
+            >
+              選択を解除
+            </button>
+          )}
         </div>
       </aside>
 
@@ -292,7 +347,7 @@ function App() {
               ))
             ) : (
               <div className="text-center py-12 text-slate-500">
-                {isLoading ? '検索中...' : (searchQuery ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。')}
+                {isLoading ? '検索中...' : (searchQuery || authorName || selectedVideoId ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。')}
               </div>
             )}
             {isLoading && <div className="text-center py-4">読み込み中...</div>}
