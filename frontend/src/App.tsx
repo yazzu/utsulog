@@ -32,6 +32,10 @@ const formatTimestamp = (elapsedTime: string): string => {
   return elapsedTime;
 };
 
+// Vite specific: Import all custom emojis from the public directory
+const emojiModules = import.meta.glob('/public/custom_emojis/*.png', { eager: true });
+const emojiFileNames = Object.keys(emojiModules).map(path => decodeURIComponent(path.split('/').pop() || ''));
+
 function App() {
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,6 +48,11 @@ function App() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [authorName, setAuthorName] = useState('');
+  const [customEmojis, setCustomEmojis] = useState<string[]>([]);
+
+  useEffect(() => {
+    setCustomEmojis(emojiFileNames);
+  }, []);
 
   // デバウンスされたAPIリクエスト
   const debouncedSearch = useCallback((query: string, reset: boolean = false) => {
@@ -207,7 +216,20 @@ function App() {
                 >
                   <h4 className="text-sm font-semibold text-slate-700 mb-3">カスタム絵文字</h4>
                   <div className="grid grid-cols-6 gap-2">
-                    {/* Emoji buttons... */}
+                    {customEmojis.map((fileName) => (
+                      <button
+                        key={fileName}
+                        onClick={() => {
+                          const emojiName = fileName.replace('.png', '');
+                          setSearchQuery(prev => `${prev}${prev ? ' ' : ''}:${emojiName}:`);
+                          setEmojiPickerOpen(false);
+                        }}
+                        className="p-1 rounded-md hover:bg-slate-100 transition-colors"
+                        title={fileName.replace('.png', '')}
+                      >
+                        <img src={`/custom_emojis/${fileName}`} alt={fileName} className="w-8 h-8 object-contain" />
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
