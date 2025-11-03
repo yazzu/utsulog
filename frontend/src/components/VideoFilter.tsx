@@ -4,6 +4,7 @@ interface Video {
   videoId: string;
   title: string;
   thumbnail_url: string;
+  publishedAt: string;
 }
 
 interface VideoFilterProps {
@@ -13,6 +14,19 @@ interface VideoFilterProps {
   onClose: () => void;
   isOpen: boolean;
 }
+
+const formatPublishedAt = (publishedAt: string): string => {
+  if (!publishedAt || publishedAt.length !== 14) {
+    return '';
+  }
+  const year = publishedAt.substring(0, 4);
+  const month = publishedAt.substring(4, 6);
+  const day = publishedAt.substring(6, 8);
+  const hour = publishedAt.substring(8, 10);
+  const minute = publishedAt.substring(10, 12);
+  const second = publishedAt.substring(12, 14);
+  return `${year}/${month}/${day} ${hour}:${minute}:${second}`;
+};
 
 const VideoFilter: React.FC<VideoFilterProps> = ({ videos, selectedVideoId, setSelectedVideoId, onClose, isOpen }) => {
   if (!isOpen) {
@@ -49,7 +63,8 @@ const VideoFilter: React.FC<VideoFilterProps> = ({ videos, selectedVideoId, setS
                   </div>
                 )}
               </button>
-              <p className="text-xs text-slate-600 mt-2 text-center">{video.title}</p>
+              <p className="text-xs text-slate-500 mt-2 text-center">{formatPublishedAt(video.publishedAt)}</p>
+              <p className="text-xs text-slate-600 mt-1 text-center">{video.title}</p>
             </div>
           ))}
         </div>

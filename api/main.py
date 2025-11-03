@@ -130,6 +130,7 @@ def get_videos(request: Request):
                 "videoId": video_id,
                 "title": source.get("title"),
                 "thumbnail_url": source.get("thumbnail_url"),
+                "publishedAt": source.get("publishedAt"),
             }
             videos.append(video)
             
