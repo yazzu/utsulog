@@ -94,7 +94,7 @@ def get_video_details(youtube, video_ids):
             video_id = item['id']
             video_url = f'https://www.youtube.com/watch?v={video_id}'
             # サムネイルURLを取得（高解像度を優先）
-            thumnail_url = item['snippet']['thumbnails'].get('high', {}).get('url')
+            thumbnail_url = item['snippet']['thumbnails'].get('high', {}).get('url')
             
             # 投稿日を取得してフォーマット
             published_at_iso = item['snippet']['publishedAt']
@@ -105,7 +105,7 @@ def get_video_details(youtube, video_ids):
             video_details.append({
                 'title': title,
                 'video_url': video_url,
-                'thumnail_url': thumnail_url,
+                'thumbnail_url': thumbnail_url,
                 'publishedAt': published_at
             })
             
