@@ -129,7 +129,7 @@ def get_videos(request: Request):
             video = {
                 "videoId": video_id,
                 "title": source.get("title"),
-                "thumbnail_url": source.get("thumbnail_url"), # タイポ修正
+                "thumbnail_url": source.get("thumbnail_url"),
             }
             videos.append(video)
             
