@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import VideoFilter from './components/VideoFilter';
 
 // APIから返される動画の型定義
 interface Video {
@@ -58,6 +59,7 @@ function App() {
   const [customEmojis, setCustomEmojis] = useState<string[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  const [isVideoFilterOpen, setIsVideoFilterOpen] = useState(false);
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
@@ -205,37 +207,29 @@ function App() {
           </div>
         </div>
 
-        {/* Video Filter */}
+        {/* Video Filter Button */}
         <div className="mt-8">
           <h3 className="text-sm font-semibold text-slate-600 uppercase mb-4">動画で絞り込み</h3>
-          <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
-            {videos.map((video) => (
-              <button
-                key={video.videoId}
-                onClick={() => setSelectedVideoId(video.videoId === selectedVideoId ? null : video.videoId)}
-                className={`relative rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  selectedVideoId === video.videoId ? 'ring-2 ring-blue-500' : ''
-                }`}
-                title={video.title}
-              >
-                <img src={video.thumbnail_url} alt={video.title} className="w-full h-auto object-cover transition-transform duration-200 hover:scale-105" />
-                {selectedVideoId === video.videoId && (
-                  <div className="absolute inset-0 bg-blue-500 bg-opacity-50 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setIsVideoFilterOpen(true)}
+            className="w-full px-4 py-2 border border-slate-300 rounded-md shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            {selectedVideoId ? '選択中の動画を変更' : '動画を選択'}
+          </button>
           {selectedVideoId && (
-            <button
-              onClick={() => setSelectedVideoId(null)}
-              className="mt-4 w-full text-sm text-center text-slate-600 hover:text-blue-600"
-            >
-              選択を解除
-            </button>
+            <div className="mt-4">
+              <p className="text-sm text-slate-600 mb-2">選択中の動画:</p>
+              <div className="flex items-center space-x-3">
+                <img src={videos.find(v => v.videoId === selectedVideoId)?.thumbnail_url} alt="Selected thumbnail" className="w-16 h-auto rounded-md" />
+                <p className="text-sm font-medium text-slate-800 flex-1">{videos.find(v => v.videoId === selectedVideoId)?.title}</p>
+              </div>
+              <button
+                onClick={() => setSelectedVideoId(null)}
+                className="mt-2 w-full text-sm text-center text-slate-600 hover:text-blue-600"
+              >
+                選択を解除
+              </button>
+            </div>
           )}
         </div>
       </aside>
@@ -355,6 +349,14 @@ function App() {
           </section>
         </div>
       </main>
+
+      <VideoFilter
+        isOpen={isVideoFilterOpen}
+        onClose={() => setIsVideoFilterOpen(false)}
+        videos={videos}
+        selectedVideoId={selectedVideoId}
+        setSelectedVideoId={setSelectedVideoId}
+      />
     </div>
   );
 }
