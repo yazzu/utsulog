@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from elasticsearch import Elasticsearch
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from urllib.parse import urlparse, parse_qs
 
 # 環境変数からElasticsearchのホストを取得
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
@@ -86,6 +87,7 @@ def read_root():
 def get_videos(request: Request):
     """
     Elasticsearchから動画のリストを取得するエンドポイント。
+    video_urlからvideoIdを抽出し、重複を除外する。
     """
     es = request.app.state.es
     if es is None:
@@ -111,10 +113,23 @@ def get_videos(request: Request):
         videos = []
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
+            video_url = source.get("video_url")
+            if not video_url:
+                continue
+            
+            try:
+                parsed_url = urlparse(video_url)
+                # YouTubeのURLから 'v' パラメータを抽出
+                video_id = parse_qs(parsed_url.query).get('v', [None])[0]
+                if not video_id:
+                    continue
+            except (KeyError, IndexError):
+                continue
+
             video = {
-                "id": hit["_id"],
+                "videoId": video_id,
                 "title": source.get("title"),
-                "thumbnail_url": source.get("thumnail_url"),
+                "thumbnail_url": source.get("thumbnail_url"), # タイポ修正
             }
             videos.append(video)
             

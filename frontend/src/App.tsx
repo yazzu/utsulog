@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // APIから返される動画の型定義
 interface Video {
-  id: string;
+  videoId: string;
   title: string;
   thumbnail_url: string;
 }
@@ -211,15 +211,15 @@ function App() {
           <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
             {videos.map((video) => (
               <button
-                key={video.id}
-                onClick={() => setSelectedVideoId(video.id === selectedVideoId ? null : video.id)}
+                key={video.videoId}
+                onClick={() => setSelectedVideoId(video.videoId === selectedVideoId ? null : video.videoId)}
                 className={`relative rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  selectedVideoId === video.id ? 'ring-2 ring-blue-500' : ''
+                  selectedVideoId === video.videoId ? 'ring-2 ring-blue-500' : ''
                 }`}
                 title={video.title}
               >
                 <img src={video.thumbnail_url} alt={video.title} className="w-full h-auto object-cover transition-transform duration-200 hover:scale-105" />
-                {selectedVideoId === video.id && (
+                {selectedVideoId === video.videoId && (
                   <div className="absolute inset-0 bg-blue-500 bg-opacity-50 flex items-center justify-center">
                     <svg className="w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

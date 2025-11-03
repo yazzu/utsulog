@@ -12,6 +12,25 @@ MAX_WORKERS = 4  # 並列処理するスレッド数
 CHUNK_SIZE = 500 # 1回のリクエストで送信するドキュメント数
 # --- 設定ここまで ---
 
+def delete_index_if_exists(index_name, es_url):
+    """
+    指定されたインデックスが存在する場合、削除する。
+    """
+    index_url = f"{es_url}/{index_name}"
+    try:
+        response = requests.head(index_url) # インデックスの存在を確認
+        if response.status_code == 200: # インデックスが存在する場合
+            print(f"Index '{index_name}' exists. Deleting...")
+            delete_response = requests.delete(index_url)
+            delete_response.raise_for_status()
+            print(f"Index '{index_name}' deleted successfully.")
+        elif response.status_code == 404:
+            print(f"Index '{index_name}' does not exist. No deletion needed.")
+        else:
+            print(f"Unexpected status code when checking index '{index_name}': {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error checking/deleting index '{index_name}': {e}")
+
 def create_index_if_not_exists(index_name, es_url):
     """
     指定されたインデックスが存在しない場合、レプリカ数を0に設定して作成する。
@@ -88,6 +107,7 @@ def main():
     """
     メイン処理。NDJSONファイルをチャンクに分割し、並列で処理する。
     """
+    delete_index_if_exists(INDEX_NAME, ELASTICSEARCH_URL)
     create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)
 
     if not os.path.isfile(NDJSON_FILE):
