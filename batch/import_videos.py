@@ -2,11 +2,14 @@ import os
 import requests
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import boto3
+from botocore.exceptions import ClientError
 
 # --- 設定 ---
-ELASTICSEARCH_URL = "http://elasticsearch:9200"
+ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200")
 INDEX_NAME = "videos"
-NDJSON_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'videos_log/videos.ndjson')
+# ローカルで実行する際のデフォルトファイルパス
+LOCAL_NDJSON_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'videos_log/videos.ndjson')
 BULK_ENDPOINT = f"{ELASTICSEARCH_URL}/_bulk"
 MAX_WORKERS = 4  # 並列処理するスレッド数
 CHUNK_SIZE = 500 # 1回のリクエストで送信するドキュメント数
@@ -103,23 +106,59 @@ def send_to_elasticsearch(payload, chunk_index):
     except Exception as e:
         return f"Failed chunk {chunk_index} (Exception): {e}"
 
+def download_from_s3(bucket_name, s3_file_name, local_file_path):
+    """
+    S3からファイルをダウンロードする
+    """
+    s3 = boto3.client('s3')
+    try:
+        print(f"Downloading s3://{bucket_name}/{s3_file_name} to {local_file_path}")
+        os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+        s3.download_file(bucket_name, s3_file_name, local_file_path)
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            print(f"Error: The object does not exist in S3: s3://{bucket_name}/{s3_file_name}")
+        else:
+            print(f"An unexpected error occurred during S3 download: {e}")
+        return False
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return False
+
 def main():
     """
     メイン処理。NDJSONファイルをチャンクに分割し、並列で処理する。
     """
+    data_store_type = os.getenv('DATA_STORE_TYPE', 'local')
+    target_ndjson_file = LOCAL_NDJSON_FILE
+
+    if data_store_type == 's3':
+        bucket_name = os.getenv('S3_BUCKET_NAME')
+        if not bucket_name:
+            print("Error: S3_BUCKET_NAME environment variable is not set.")
+            return
+        
+        s3_object_name = os.path.join('videos', os.path.basename(LOCAL_NDJSON_FILE))
+        local_tmp_path = os.path.join('/tmp', os.path.basename(LOCAL_NDJSON_FILE))
+        
+        if not download_from_s3(bucket_name, s3_object_name, local_tmp_path):
+            return
+        target_ndjson_file = local_tmp_path
+    
     delete_index_if_exists(INDEX_NAME, ELASTICSEARCH_URL)
     create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)
 
-    if not os.path.isfile(NDJSON_FILE):
-        print(f"Error: File not found at '{NDJSON_FILE}'")
+    if not os.path.isfile(target_ndjson_file):
+        print(f"Error: File not found at '{target_ndjson_file}'")
         return
 
-    print(f"Starting import of '{os.path.basename(NDJSON_FILE)}' to index '{INDEX_NAME}'...")
+    print(f"Starting import of '{os.path.basename(target_ndjson_file)}' to index '{INDEX_NAME}'...")
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = []
         chunk_index = 0
-        with open(NDJSON_FILE, 'r', encoding='utf-8') as f:
+        with open(target_ndjson_file, 'r', encoding='utf-8') as f:
             while True:
                 chunk = [line for _, line in zip(range(CHUNK_SIZE), f)]
                 if not chunk:
@@ -138,7 +177,6 @@ def main():
                 print(f"An error occurred during processing a chunk: {exc}")
 
     print("\nImport process finished.")
-    # インデックスのドキュメント数を表示して確認
     try:
         count_url = f"{ELASTICSEARCH_URL}/{INDEX_NAME}/_count"
         response = requests.get(count_url)

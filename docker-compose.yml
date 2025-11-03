@@ -51,7 +51,7 @@ services:
     command: npm run dev
 
   batch:
-    build: ./api
+    build: ./batch
     volumes:
       - .:/app
       - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails

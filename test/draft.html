@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTubeチャットログ検索</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Interフォントの読み込み -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide-react@latest/dist/lucide-react.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc; /* bg-slate-50 */
+        }
+        /* スクロールバーのスタイル（モダンブラウザ向け） */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* bg-slate-300 */
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* bg-slate-400 */
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div class="flex h-screen">
+        <!-- 
+          サイドバー：フィルターセクション 
+          画面幅がlg（1024px）未満の場合は非表示にし、lg以上で表示します。
+          モバイル表示では、フィルターボタン（別途実装）で表示/非表示を切り替える想定です。
+        -->
+        <aside class="w-72 flex-shrink-0 bg-white border-r border-slate-200 p-6 hidden lg:block overflow-y-auto">
+            <h2 class="text-xl font-bold text-slate-800 mb-6">フィルター</h2>
+            
+            <!-- 動画投稿日フィルター -->
+            <div class="space-y-4">
+                <h3 class="text-sm font-semibold text-slate-600 uppercase">動画投稿日</h3>
+                <div>
+                    <label for="date-from" class="block text-sm font-medium text-slate-700 mb-1">From</label>
+                    <input type="date" id="date-from" name="date-from" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                </div>
+                <div>
+                    <label for="date-to" class="block text-sm font-medium text-slate-700 mb-1">To</label>
+                    <input type="date" id="date-to" name="date-to" class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                </div>
+            </div>
+
+            <!-- 投稿者名フィルター -->
+            <div class="mt-8">
+                <h3 class="text-sm font-semibold text-slate-600 uppercase mb-4">投稿者名</h3>
+                <div class="relative">
+                    <input type="text" id="author-search" name="author-search" placeholder="投稿者名で検索..." class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="w-4 h-4 text-slate-400" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    </div>
+                </div>
+                <!-- 検索された投稿者リスト（ダミー） -->
+                <div class="mt-4 space-y-2 max-h-48 overflow-y-auto">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-slate-700">サンプルユーザー1</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-slate-700">サンプルユーザー2</span>
+                    </label>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm text-slate-700">長めの名前のユーザーさん</span>
+                    </label>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- メインコンテンツ：検索ボックスと検索結果 -->
+        <main class="flex-1 overflow-y-auto">
+            <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+
+                <!-- ヘッダーと検索ボックス -->
+                <header class="mb-8">
+                    <h1 class="text-3xl font-bold text-slate-900 mb-2">チャットログ検索</h1>
+                    <p class="text-slate-600">YouTube動画のチャットログを横断検索します。</p>
+
+                    <!-- 検索ボックス -->
+                    <div class="mt-6 relative" x-data="{ emojiPickerOpen: false }">
+                        <input 
+                            type="text" 
+                            placeholder="検索キーワードを入力（例: 「お疲れ様」 😂）"
+                            class="w-full pl-5 pr-12 py-3 border border-slate-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+                        >
+                        <!-- 絵文字パレットトグルボタン -->
+                        <button 
+                            @click="emojiPickerOpen = !emojiPickerOpen"
+                            class="absolute inset-y-0 right-0 flex items-center justify-center w-12 h-full text-slate-500 hover:text-blue-600 rounded-full focus:outline-none"
+                            aria-label="絵文字ピッカーを開く"
+                        >
+                            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                        </button>
+
+                        <!-- 検索ボタン（Enterキーでも実行可能だが、明示的なボタンも配置）-->
+                        <!-- 
+                          実際には検索ボタンは検索ボックスの隣にあった方が良いかもしれませんが、
+                          絵文字ボタンとの兼ね合いで、ここでは右下に配置しています。
+                          デザインに応じて位置は調整してください。
+                        -->
+                        
+                        <!-- 
+                          カスタム絵文字パレット（ダミー）
+                          x-showで表示/非表示を切り替えます。
+                        -->
+                        <div 
+                            x-show="emojiPickerOpen" 
+                            @click.away="emojiPickerOpen = false"
+                            x-transition
+                            class="absolute top-full right-0 mt-2 w-72 bg-white border border-slate-200 rounded-lg shadow-xl z-10 p-4"
+                        >
+                            <h4 class="text-sm font-semibold text-slate-700 mb-3">カスタム絵文字</h4>
+                            <div class="grid grid-cols-6 gap-2">
+                                <!-- ダミー絵文字 -->
+                                <button class="p-1 rounded-md hover:bg-slate-100 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">😂</button>
+                                <button class="p-1 rounded-md hover:bg-slate-100 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">👍</button>
+                                <button class="p-1 rounded-md hover:bg-slate-100 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">🎉</button>
+                                <button class="p-1 rounded-md hover:bg-slate-100 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">🙏</button>
+                                <button class="p-1 rounded-md hover:bg-slate-100 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">草</button>
+                                <button class="p-1 rounded-md hover:bg-slate-100 text-2xl focus:outline-none focus:ring-2 focus:ring-blue-500">😇</button>
+                                <!-- ダミーのカスタム画像絵文字 -->
+                                <button class="p-1 rounded-md hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <img src="https://placehold.co/32x32/E0E7FF/4F46E5?text=:kusa:" alt="kusa emoji" class="w-8 h-8 rounded">
+                                </button>
+                                <button class="p-1 rounded-md hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <img src="https://placehold.co/32x32/FEF3C7/D97706?text=:tako:" alt="tako emoji" class="w-8 h-8 rounded">
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- 検索結果 -->
+                <section class="space-y-4">
+                    <h3 class="text-lg font-semibold text-slate-800">検索結果 (3件)</h3>
+
+                    <!-- 検索結果カード 1 -->
+                    <div class="relative group">
+                        <div class="bg-white p-5 rounded-lg shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out">
+                            <!-- ヘッダー：投稿者名とタイムスタンプ -->
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <img src="https://placehold.co/40x40/cbd5e1/475569?text=U1" alt="User 1 Avatar" class="w-10 h-10 rounded-full">
+                                    <div>
+                                        <p class="font-semibold text-slate-800">サンプルユーザー1</p>
+                                        <p class="text-sm text-slate-500">動画: 「サンプル動画A」</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">1:23:45</span>
+                            </div>
+                            <!-- メッセージ本文 -->
+                            <p class="text-slate-700 leading-relaxed">
+                                ここにチャットメッセージが入ります。
+                                <span class="font-bold text-blue-600">お疲れ様</span>でした！
+                                <img src="https://placehold.co/20x20/E0E7FF/4F46E5?text=:kusa:" alt="kusa emoji" class="w-5 h-5 inline-block align-middle mx-0.5 rounded-sm">
+                                楽しかったです。
+                            </p>
+                        </div>
+                        
+                        <!-- 
+                          マウスオーバー時のポップアップ 
+                          group-hover を利用して表示/非表示を制御
+                        -->
+                        <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64
+                                    opacity-0 invisible 
+                                    group-hover:opacity-100 group-hover:visible group-hover:bottom-full
+                                    transition-all duration-200 ease-in-out z-20">
+                            <div class="bg-black bg-opacity-90 text-white rounded-lg shadow-xl overflow-hidden">
+                                <!-- タイムスタンプ時点のサムネイル（プレースホルダー） -->
+                                <img src="https://placehold.co/400x225/334155/e2e8f0?text=Thumbnail [1:23:45]" alt="Video thumbnail at 1:23:45" class="w-full h-auto">
+                                <div class="p-3">
+                                    <p class="text-sm font-semibold mb-1">サンプル動画A</p>
+                                    <!-- タイムスタンプ時点の動画URL -->
+                                    <a href="#video-at-1h23m45s" class="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
+                                        <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                        <span>1:23:45 から再生</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 検索結果カード 2 -->
+                    <div class="relative group">
+                        <div class="bg-white p-5 rounded-lg shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <img src="https://placehold.co/40x40/fecaca/991b1b?text=U2" alt="User 2 Avatar" class="w-10 h-10 rounded-full">
+                                    <div>
+                                        <p class="font-semibold text-slate-800">長めの名前のユーザーさん</p>
+                                        <p class="text-sm text-slate-500">動画: 「サンプル動画B」</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">0:15:20</span>
+                            </div>
+                            <p class="text-slate-700 leading-relaxed">
+                                この瞬間の「<span class="font-bold text-blue-600">お疲れ様</span>」が一番好き 😂
+                            </p>
+                        </div>
+                        
+                        <!-- ポップアップ -->
+                        <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64
+                                    opacity-0 invisible 
+                                    group-hover:opacity-100 group-hover:visible
+                                    transition-all duration-200 ease-in-out z-20">
+                            <div class="bg-black bg-opacity-90 text-white rounded-lg shadow-xl overflow-hidden">
+                                <img src="https://placehold.co/400x225/1e293b/e2e8f0?text=Thumbnail [0:15:20]" alt="Video thumbnail at 0:15:20" class="w-full h-auto">
+                                <div class="p-3">
+                                    <p class="text-sm font-semibold mb-1">サンプル動画B</p>
+                                    <a href="#video-at-0h15m20s" class="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
+                                        <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                        <span>0:15:20 から再生</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 検索結果カード 3 -->
+                    <div class="relative group">
+                        <div class="bg-white p-5 rounded-lg shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center space-x-3">
+                                    <img src="https://placehold.co/40x40/bbf7d0/166534?text=U3" alt="User 3 Avatar" class="w-10 h-10 rounded-full">
+                                    <div>
+                                        <p class="font-semibold text-slate-800">サンプルユーザー3</p>
+                                        <p class="text-sm text-slate-500">動画: 「サンプル動画A」</p>
+                                    </div>
+                                </div>
+                                <span class="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">3:05:11</span>
+                            </div>
+                            <p class="text-slate-700 leading-relaxed">
+                                長時間配信<span class="font-bold text-blue-600">お疲れ様</span>でした！ゆっくり休んでください🙏
+                            </p>
+                        </div>
+                        
+                        <!-- ポップアップ -->
+                        <div class="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64
+                                    opacity-0 invisible 
+                                    group-hover:opacity-100 group-hover:visible
+                                    transition-all duration-200 ease-in-out z-20">
+                            <div class="bg-black bg-opacity-90 text-white rounded-lg shadow-xl overflow-hidden">
+                                <img src="https://placehold.co/400x225/4b5563/e2e8f0?text=Thumbnail [3:05:11]" alt="Video thumbnail at 3:05:11" class="w-full h-auto">
+                                <div class="p-3">
+                                    <p class="text-sm font-semibold mb-1">サンプル動画A</p>
+                                    <a href="#video-at-3h05m11s" class="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
+                                        <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                        <span>3:05:11 から再生</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- 
+      Alpine.js CDN
+      絵文字ピッカーの表示/非表示を制御するために使用
+    -->
+    <script src="//unpkg.com/alpinejs" defer></script>
+</body>
+</html>

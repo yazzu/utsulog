@@ -2,18 +2,84 @@
 import pytchat
 import json
 import os
+import boto3
+from botocore.exceptions import NoCredentialsError, ClientError
+
+def upload_to_s3(local_file_path, bucket_name, s3_file_name):
+    """
+    ファイルをS3にアップロードする
+    """
+    s3 = boto3.client('s3')
+    try:
+        s3.upload_file(local_file_path, bucket_name, s3_file_name)
+        print(f"  Successfully uploaded {os.path.basename(local_file_path)} to s3://{bucket_name}/{s3_file_name}")
+        return True
+    except FileNotFoundError:
+        print(f"  Error: The file was not found: {local_file_path}")
+        return False
+    except NoCredentialsError:
+        print("  Error: AWS credentials not found.")
+        return False
+    except Exception as e:
+        print(f"  An unexpected error occurred during S3 upload: {e}")
+        return False
+
+def download_from_s3(bucket_name, s3_file_name, local_file_path):
+    """
+    S3からファイルをダウンロードする
+    """
+    s3 = boto3.client('s3')
+    try:
+        print(f"Downloading s3://{bucket_name}/{s3_file_name} to {local_file_path}")
+        os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+        s3.download_file(bucket_name, s3_file_name, local_file_path)
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            print(f"Error: The object does not exist in S3: s3://{bucket_name}/{s3_file_name}")
+        else:
+            print(f"An unexpected error occurred during S3 download: {e}")
+        return False
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+        return False
 
 def main():
-    # tsvファイルを読み込む
-    with open('utsuro_himuro_streams.tsv', 'r', encoding='utf-8') as f:
-        next(f)  # Skip header row
-        for line in f:
-            # タブで分割
-            parts = line.strip().split('\t')
-            if len(parts) < 2:
-                continue
+    # 環境変数を取得
+    data_store_type = os.getenv('DATA_STORE_TYPE', 'local')
+    bucket_name = os.getenv('S3_BUCKET_NAME')
 
-            title, url, *_ = parts
+    if data_store_type == 's3' and not bucket_name:
+        print("Error: DATA_STORE_TYPE is 's3' but S3_BUCKET_NAME environment variable is not set.")
+        return
+
+    # 処理対象の動画リストファイルパスを決定
+    video_list_file = 'videos_log/videos.ndjson'
+    if data_store_type == 's3':
+        s3_object_name = 'videos/videos.ndjson'
+        local_tmp_path = '/tmp/videos.ndjson'
+        if not download_from_s3(bucket_name, s3_object_name, local_tmp_path):
+            return
+        video_list_file = local_tmp_path
+
+    if not os.path.exists(video_list_file):
+        print(f"Error: Video list file not found at '{video_list_file}'")
+        return
+
+    # videos.ndjson ファイルを読み込む
+    with open(video_list_file, 'r', encoding='utf-8') as f:
+        for line in f:
+            try:
+                video_data = json.loads(line)
+                title = video_data.get('title')
+                url = video_data.get('video_url')
+
+                if not title or not url:
+                    print(f"  Skipping line due to missing 'title' or 'video_url': {line.strip()}")
+                    continue
+            except json.JSONDecodeError:
+                print(f"  Skipping invalid JSON line: {line.strip()}")
+                continue
 
             print(f"Processing: {title}")
 
@@ -25,11 +91,12 @@ def main():
                 continue
 
             # chat_logs ディレクトリがなければ作成
-            if not os.path.exists('chat_logs'):
-                os.makedirs('chat_logs')
+            local_chat_logs_dir = 'chat_logs'
+            if not os.path.exists(local_chat_logs_dir):
+                os.makedirs(local_chat_logs_dir)
 
             # JSONファイルの存在チェック
-            output_filename = os.path.join('chat_logs', f"{video_id}.json")
+            output_filename = os.path.join(local_chat_logs_dir, f"{video_id}.json")
             if os.path.exists(output_filename):
                 print(f"  Skipping, {output_filename} already exists.")
                 continue
@@ -43,8 +110,10 @@ def main():
             
             # JSONファイルに書き込み
             with open(output_filename, 'w', encoding='utf-8') as json_file:
+                has_content = False
                 while chat.is_alive():
                     for c in chat.get().items:
+                        has_content = True
                         chat_data = {
                             "videoId": video_id,
                             "videoTitle": title,
@@ -58,8 +127,20 @@ def main():
                         }
                         json.dump(chat_data, json_file, ensure_ascii=False)
                         json_file.write('\n')
+            
+            if not has_content:
+                print(f"  No chat logs found for {video_id}. The local file is empty.")
+                # 空のファイルは削除
+                os.remove(output_filename)
+                continue
 
             print(f"  Saved to {output_filename}")
+
+            # S3モードの場合はアップロード
+            if data_store_type == 's3':
+                s3_object_name = os.path.join('chat_logs', f"{video_id}.json")
+                upload_to_s3(output_filename, bucket_name, s3_object_name)
+
 
 if __name__ == '__main__':
     main()
