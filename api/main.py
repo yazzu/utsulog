@@ -12,6 +12,8 @@ ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200"
 THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL", "http://localhost:8000/thumbnails")
 
 app = FastAPI()
+# Elasticsearchに接続
+es = Elasticsearch(ELASTICSEARCH_HOST)
 
 # 静的ファイル（サムネイル画像）を配信するためのマウント
 app.mount("/thumbnails", StaticFiles(directory="/thumbnails"), name="thumbnails")
@@ -51,20 +53,7 @@ def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
 
 @app.on_event("startup")
 async def startup_event():
-    """
-    アプリケーション起動時にElasticsearchへの接続を確立する。
-    """
-    try:
-        es = Elasticsearch(ELASTICSEARCH_HOST)
-        if es.ping():
-            print("Successfully connected to Elasticsearch.")
-            app.state.es = es
-        else:
-            print("Failed to connect to Elasticsearch: ping failed.")
-            app.state.es = None
-    except Exception as e:
-        print(f"Error connecting to Elasticsearch during startup: {e}")
-        app.state.es = None
+    app.state.es = es
 
 # CORSミドルウェアの設定
 origins = [
@@ -108,7 +97,12 @@ def get_videos(request: Request):
     }
 
     try:
-        response = es.search(index="videos", body=search_query)
+        response = es.search(
+            index="videos", 
+            query=search_query["query"],
+            sort=search_query["sort"],
+            size=search_query["size"]
+        )
         
         videos = []
         for hit in response["hits"]["hits"]:
@@ -220,7 +214,13 @@ def search_chat_logs(
     }
 
     try:
-        response = es.search(index="youtube-chat-logs", body=search_query)
+        response = es.search(
+            index="youtube-chat-logs",
+            from_=search_query["from"],
+            query=search_query["query"],
+            sort=search_query["sort"],
+            size=search_query["size"]
+        )
         
         # 総ヒット件数を取得
         total_hits = response["hits"]["total"]["value"]
