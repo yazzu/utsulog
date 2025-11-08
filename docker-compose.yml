@@ -45,7 +45,9 @@ services:
     command: npm run dev
 
   batch:
-    build: ./api
+    build:
+      context: ./batch
+      dockerfile: Dockerfile
     volumes:
       - .:/app
       - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails

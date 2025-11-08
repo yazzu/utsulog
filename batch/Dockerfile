@@ -5,11 +5,12 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # 依存関係ファイルをコピーしてインストール
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションコードをコピー
-COPY . /app
+COPY . .
+RUN chmod +x run_batch.sh
 
 # 環境変数を設定（オプション）
 # ENV PYTHONUNBUFFERED 1

@@ -7,8 +7,6 @@ import boto3
 from botocore.exceptions import NoCredentialsError
 
 # --- 設定 ---
-# APIキーを読み込むファイル
-API_KEY_FILE = 'api_key.txt'
 # 対象のチャンネルID
 CHANNEL_ID = 'UC64MV1Dfq3prs9CccXg09rQ'  # 氷室うつろさん
 # 出力ファイル名
@@ -16,22 +14,6 @@ OUTPUT_NDJSON = 'videos_log/videos.ndjson'
 
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'
-
-def load_api_key(file_path):
-    """
-    ファイルからAPIキーを読み込む
-    ファイル形式: APIKEY = '...'
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            line = f.readline()
-            if "APIKEY = '" in line:
-                return line.split("'")[1]
-    except FileNotFoundError:
-        print(f"エラー: APIキーファイルが見つかりません: {file_path}")
-    except IndexError:
-        print(f"エラー: APIキーファイル '{file_path}' の形式が正しくありません。")
-    return None
 
 
 def get_all_video_ids_from_channel(youtube, channel_id):
@@ -154,8 +136,9 @@ def main():
     """
     メイン処理
     """
-    API_KEY = load_api_key(API_KEY_FILE)
+    API_KEY = os.getenv('YOUTUBE_API_KEY')
     if not API_KEY:
+        print("Error: YOUTUBE_API_KEY environment variable is not set.")
         return
 
     youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=API_KEY)

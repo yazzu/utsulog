@@ -7,30 +7,48 @@ import boto3
 from botocore.exceptions import ClientError
 
 # --- 設定 ---
-ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL", "http://elasticsearch:9200")
+ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
+ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 INDEX_NAME = "youtube-chat-logs"
 LOCAL_CHAT_LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'chat_logs')
+
+# ELASTICSEARCH_URLが設定されていない場合はエラー
+if not ELASTICSEARCH_URL:
+    raise ValueError("ELASTICSEARCH_URL environment variable is not set.")
+
+# ELASTICSEARCH_API_KEYが設定されていない場合はエラー
+if not ELASTICSEARCH_API_KEY:
+    raise ValueError("ELASTICSEARCH_API_KEY environment variable is not set.")
+
 BULK_ENDPOINT = f"{ELASTICSEARCH_URL}/_bulk"
 MAX_WORKERS = 4  # 並列処理するスレッド数
 # --- 設定ここまで ---
 
+def _get_auth_headers():
+    """
+    Elasticsearch Serverless用のAPIキー認証ヘッダーを生成する。
+    """
+    return {
+        "Content-Type": "application/x-ndjson",
+        "Authorization": f"ApiKey {ELASTICSEARCH_API_KEY}"
+    }
+
 def create_index_if_not_exists(index_name, es_url):
     """
     指定されたインデックスが存在しない場合、レプリカ数を0に設定して作成する。
+    Elasticsearch Serverlessではレプリカ数の設定は不要だが、互換性のため残す。
     """
     index_url = f"{es_url}/{index_name}"
+    headers = _get_auth_headers()
     try:
-        response = requests.head(index_url) # インデックスの存在を確認
+        response = requests.head(index_url, headers=headers) # インデックスの存在を確認
         if response.status_code == 404: # インデックスが存在しない場合
-            print(f"Index '{index_name}' does not exist. Creating with 0 replicas...")
-            settings = {
-                "settings": {
-                    "number_of_replicas": 0
-                }
-            }
-            create_response = requests.put(index_url, json=settings)
+            print(f"Index '{index_name}' does not exist. Creating...")
+            # Serverlessではレプリカ数の設定は無視されるか、エラーになる可能性があるため、設定を削除
+            # ただし、既存のコードとの互換性を保つため、空のsettingsでPUTを試みる
+            create_response = requests.put(index_url, headers=headers, json={})
             create_response.raise_for_status()
-            print(f"Index '{index_name}' created successfully with 0 replicas.")
+            print(f"Index '{index_name}' created successfully.")
         elif response.status_code == 200:
             print(f"Index '{index_name}' already exists.")
         else:
@@ -65,7 +83,7 @@ def send_to_elasticsearch(payload, filename):
     if not payload:
         return f"Skipped (empty or read error): {filename}"
 
-    headers = {"Content-Type": "application/x-ndjson"}
+    headers = _get_auth_headers()
     try:
         response = requests.post(
             BULK_ENDPOINT,
@@ -180,12 +198,12 @@ def main():
     print("\nImport process finished.")
     try:
         count_url = f"{ELASTICSEARCH_URL}/{INDEX_NAME}/_count"
-        response = requests.get(count_url)
+        response = requests.get(count_url, headers=_get_auth_headers())
         if response.ok:
             total_docs = response.json().get('count', 'N/A')
             print(f"Total documents in index '{INDEX_NAME}': {total_docs}")
     except requests.exceptions.RequestException as e:
-        print(f"Could not retrieve document count for index '{INDEX_NAME}'. Is Elasticsearch running?")
+        print(f"Could not retrieve document count for index '{INDEX_NAME}'. Is Elasticsearch running? Error: {e}")
 
 
 if __name__ == "__main__":

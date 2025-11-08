@@ -46,3 +46,4 @@ chat_logs/*.json
 api_key.txt
 instraction_log.txt
 enviroment.md
+Elastic_Cound_credentials.csv

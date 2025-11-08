@@ -1,0 +1,128 @@
+# AWS Fargate Batch Setup Log (2025-11-03)
+
+本日実施した、utsulogバッチ処理をAWS Fargateで定期実行するためのセットアップ手順のまとめ。
+
+## ステップ1：【権限設定】IAMロールの作成
+
+FargateタスクがS3やその他のAWSサービスにアクセスするための権限を設定。
+
+1.  **IAMロールの作成**:
+    -   信頼されたエンティティ: `Elastic Container Service Task`
+    -   ロール名: `ecs-task-role-utsulog-batch`
+
+2.  **許可ポリシーのアタッチ**:
+    -   `AmazonECSTaskExecutionRolePolicy`: ECRからのイメージプルやCloudWatchへのログ書き込みのための基本権限。
+    -   **カスタムポリシーの作成とアタッチ**:
+        -   ポリシー名: `UtsulogBatchS3AccessPolicy`
+        -   許可するサービス: S3
+        -   許可するアクション: `GetObject`, `PutObject`, `ListBucket`
+        -   対象リソース: 作成したS3バケットのARN (`arn:aws:s3:::your-bucket-name` および `arn:aws:s3:::your-bucket-name/*`)
+    -   `SecretsManagerReadWrite`: Secrets Managerからシークレットを読み取るための権限。
+
+3.  **サービスリンクロールの確認**:
+    -   ECSクラスター作成時に `AWSServiceRoleForECS` が必要であることを確認。
+    -   エラーが発生したため、ロールの存在を確認し、最終的にクラスター作成が成功。
+
+4.  **`ecsTaskExecutionRole` への権限追加**:
+    -   FargateタスクがSecrets Managerから環境変数を取得するために、`ecsTaskExecutionRole` に `secretsmanager:GetSecretValue` 権限を追加。
+    -   インラインポリシーとして、対象のシークレットARN (`arn:aws:secretsmanager:ap-northeast-1:<your-aws-account-id>:secret:elastic-cloud-credentials-*`, `arn:aws:secretsmanager:ap-northeast-1:<your-aws-account-id>:secret:youtube-api-key-*`) を指定。
+
+## ステップ2：【イメージ登録】ECRへのDockerイメージPush
+
+ローカルでビルドしたDockerイメージをAWSのコンテナリポジトリ(ECR)にアップロード。
+
+1.  **AWS CLIのセットアップ**:
+    -   ローカル環境にAWS CLIをインストール。
+    -   `aws configure` を実行し、IAMユーザーのアクセスキーIDとシークレットアクセスキーを設定。
+
+2.  **ECRリポジトリの作成**:
+    -   リージョン: 東京 (ap-northeast-1)
+    -   リポジトリ名: `utsulog-batch`
+
+3.  **Dockerイメージのビルドとプッシュ**:
+    -   `aws ecr get-login-password` コマンドでECRにDockerログイン。
+    -   `docker-compose build --no-cache batch` で `utsulog-batch` サービスのイメージをキャッシュを無効にしてビルド。
+    -   `docker tag` コマンドで、ビルドしたイメージにECRリポジトリのURIをタグ付け。
+    -   `docker push` コマンドで、タグ付けしたイメージをECRにプッシュ。
+
+## ステップ3：【タスク定義】Fargateタスク定義の作成
+
+Fargateで実行するコンテナの設計図を作成。
+
+1.  **タスク定義の作成**:
+    -   起動タイプ: AWS Fargate
+    -   タスク定義ファミリー名: `utsulog-batch-task-definition`
+    -   タスクロール: ステップ1で作成したIAMロール (`ecs-task-role-utsulog-batch`) を指定。
+    -   コンテナの定義:
+        -   コンテナ名: `utsulog-batch-container`
+        -   イメージURI: ステップ2でプッシュしたECRイメージのURIを指定。
+        -   環境変数:
+            -   `DATA_STORE_TYPE=s3`
+            -   `S3_BUCKET_NAME=<your-bucket-name>`
+            -   `ELASTICSEARCH_URL` (Secrets Managerから参照)
+            -   `ELASTICSEARCH_API_KEY` (Secrets Managerから参照)
+            -   `YOUTUBE_API_KEY` (Secrets Managerから参照)
+        -   コマンド: `/app/batch/run_batch.sh` (シェルスクリプトを実行するように上書き)
+
+## ステップ4：【実行環境】FargateクラスターとVPCの作成
+
+タスクを実行するための場所とネットワーク環境を準備。
+
+1.  **VPCの作成 (東京リージョン)**:
+    -   デフォルトVPCが存在しなかったため、VPCウィザードを使用して新規作成。
+    -   VPC名: `utsulog-vpc`
+    -   パブリックサブネットとプライベートサブネットを複数のAZに作成。
+
+2.  **サブネット設定の変更**:
+    -   FargateタスクにパブリックIPを割り当てるため、作成した**パブリックサブネット**の設定を編集。
+    -   「パブリック IPv4 アドレスの自動割り当てを有効化」にチェックを入れた。
+
+3.  **VPCエンドポイントの作成**:
+    -   FargateタスクがSecrets Managerにアクセスできるよう、`com.amazonaws.ap-northeast-1.secretsmanager` のVPCエンドポイントを作成。
+    -   VPC: `utsulog-vpc`
+    -   サブネット: すべてのサブネットを選択。
+    -   セキュリティグループ: Fargateタスクが使用するセキュリティグループを選択し、インバウンドでHTTPS (443) を許可。
+
+4.  **ルートテーブルの修正**:
+    -   パブリックサブネットがインターネットゲートウェイへのルートを持つように、パブリック用のルートテーブル (`utsulog-vpc-rtb-public` など) にパブリックサブネットを関連付け。
+
+5.  **ECSクラスターの作成**:
+    -   インフラストラクチャ: 「Fargate のみ」を選択。
+    -   クラスター名: `utsulog-cluster`
+
+## ステップ5：【定期実行】EventBridge Schedulerによるタスクのスケジューリング
+
+指定した時間にバッチ処理を自動実行するためのタイマーを設定。
+
+1.  **EventBridgeスケジュールの作成**:
+    -   スケジュールのタイプ: 定期的なスケジュール (Cron式)
+    -   ターゲット: `Amazon ECS` の `RunTask` アクションを選択。
+    -   ターゲットの詳細設定:
+        -   クラスター: `utsulog-cluster`
+        -   タスク定義: `utsulog-batch-task-definition`
+        -   起動タイプ: FARGATE
+    -   ネットワーク設定:
+        -   VPC: ステップ4で作成した `utsulog-vpc` を選択。
+        -   サブネット: `utsulog-vpc` 内の**パブリックサブネット**を複数選択。
+        -   パブリックIPの自動割り当て: 「有効」を選択。
+        -   セキュリティグループ: 必要なアウトバウンド通信を許可するものを選択/作成。
+
+## その他の設定と修正
+
+*   **Elasticsearch Serverlessへの移行**:
+    -   従来のElastic CloudからElasticsearch Serverlessプロジェクト (`utsulog-serverless`) へ移行。
+    -   エンドポイント: `https://utsulog-serverless-f42126.es.ap-northeast-1.aws.elastic.cloud:443`
+
+*   **Secrets Managerへの秘密情報登録**:
+    -   `utsulog/elastic-cloud-credentials` (ELASTICSEARCH_URL, ELASTICSEARCH_API_KEY)
+    -   `utsulog/youtube-api-key` (YOUTUBE_API_KEY)
+
+*   **Pythonスクリプトの修正**:
+    -   `batch/get_videos.py`: `YOUTUBE_API_KEY` を環境変数から読み込むように変更。
+    -   `batch/import_chat_logs.py`, `batch/import_videos.py`: `ELASTICSEARCH_URL`, `ELASTICSEARCH_API_KEY` を環境変数から読み込み、APIキー認証を使用するように変更。
+
+*   **`batch/Dockerfile` の修正**:
+    -   `COPY . .` で`batch`ディレクトリ全体を`/app`にコピーし、`run_batch.sh`に実行権限を付与するように修正。
+
+*   **`batch/run_batch.sh` の作成**:
+    -   一連のバッチ処理 (`get_videos.py`, `get_chatlog.py`, `import_videos.py`, `import_chat_logs.py`) を順番に実行するシェルスクリプトを作成。
