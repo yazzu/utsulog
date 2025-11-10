@@ -10,7 +10,7 @@ from botocore.exceptions import NoCredentialsError
 # 対象のチャンネルID
 CHANNEL_ID = 'UC64MV1Dfq3prs9CccXg09rQ'  # 氷室うつろさん
 # 出力ファイル名
-OUTPUT_NDJSON = 'videos_log/videos.ndjson'
+OUTPUT_NDJSON = 'videos/videos.ndjson'
 
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'

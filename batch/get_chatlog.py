@@ -44,17 +44,34 @@ def download_from_s3(bucket_name, s3_file_name, local_file_path):
         print(f"An unexpected error occurred: {e}")
         return False
 
+def s3_object_exists(bucket_name, s3_object_name):
+    """
+    S3にオブジェクトが存在するかどうかを確認する
+    """
+    s3 = boto3.client('s3')
+    try:
+        s3.head_object(Bucket=bucket_name, Key=s3_object_name)
+        return True
+    except ClientError as e:
+        if e.response['Error']['Code'] == '404':
+            return False
+        else:
+            # その他のClientError（例：権限不足）は再送出
+            print(f"  Error checking S3 object existence: {e}")
+            raise
+
 def main():
     # 環境変数を取得
     data_store_type = os.getenv('DATA_STORE_TYPE', 'local')
     bucket_name = os.getenv('S3_BUCKET_NAME')
+    proxy_url = os.getenv('PROXY_URL') # プロキシURLを環境変数から取得
 
     if data_store_type == 's3' and not bucket_name:
         print("Error: DATA_STORE_TYPE is 's3' but S3_BUCKET_NAME environment variable is not set.")
         return
 
     # 処理対象の動画リストファイルパスを決定
-    video_list_file = 'videos_log/videos.ndjson'
+    video_list_file = 'videos/videos.ndjson'
     if data_store_type == 's3':
         s3_object_name = 'videos/videos.ndjson'
         local_tmp_path = '/tmp/videos.ndjson'
@@ -101,11 +118,22 @@ def main():
                 print(f"  Skipping, {output_filename} already exists.")
                 continue
 
+            # S3モードの場合、まずS3にファイルが存在するかチェック
+            if data_store_type == 's3':
+                s3_object_name = os.path.join('chat_logs', f"{video_id}.json")
+                try:
+                    if s3_object_exists(bucket_name, s3_object_name):
+                        print(f"  Skipping, s3://{bucket_name}/{s3_object_name} already exists.")
+                        continue
+                except ClientError:
+                    print(f"  Could not check for object existence in S3. Halting.")
+                    break
+
             # チャットログを取得
             try:
-                chat = pytchat.create(video_id=video_id)
-            except pytchat.exceptions.InvalidVideoIdException:
-                print(f"  Could not retrieve chat for video ID: {video_id}. The video may be private or deleted.")
+                chat = pytchat.create(video_id=video_id, proxy=proxy_url)
+            except pytchat.exceptions.InvalidVideoIdException as e:
+                print(f"  Could not retrieve chat for video ID: {video_id}. The video may be private or deleted. Error: {e}")
                 continue
             
             # JSONファイルに書き込み

@@ -6,7 +6,8 @@ set -e
 echo "Starting batch process..."
 
 # 1. 動画リストの取得とS3へのアップロード
-echo "Running get_videos.py..."
-python /app/get_videos.py
+echo "Running import_chat_logs.py..."
+python batch/import_videos.py
+python /app/import_chat_logs.py
 echo
 echo "Batch process finished successfully."
