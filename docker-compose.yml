@@ -28,7 +28,7 @@ services:
       - "8000:8000"
     volumes:
       - ./api:/app
-      - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails
+      - /mnt/f/Dev/python_projects/youtube_tools/thumbnails_webp:/thumbnails
     environment:
       - THUMBNAIL_BASE_URL=http://localhost:8000/thumbnails
     command: uvicorn main:app --host 0.0.0.0 --port 8000
@@ -50,7 +50,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - .:/app
-      - /mnt/f/Dev/python_projects/youtube_tools/thumbnails:/thumbnails
+      - /mnt/f/Dev/python_projects/youtube_tools/thumbnails_webp:/thumbnails
     environment:
       - THUMBNAIL_BASE_URL=http://localhost:8000/thumbnails
     command: tail -f /dev/null

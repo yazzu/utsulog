@@ -9,14 +9,18 @@ from urllib.parse import urlparse, parse_qs
 
 # 環境変数からElasticsearchのホストを取得
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
-THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL", "http://localhost:8000/thumbnails")
+ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
+THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL", "https://utsulog-thumbnails.s3.ap-northeast-1.amazonaws.com")
 
 app = FastAPI()
 # Elasticsearchに接続
-es = Elasticsearch(ELASTICSEARCH_HOST)
+if ELASTICSEARCH_API_KEY:
+    es = Elasticsearch(ELASTICSEARCH_HOST, api_key=ELASTICSEARCH_API_KEY)
+else:
+    es = Elasticsearch(ELASTICSEARCH_HOST)
 
 # 静的ファイル（サムネイル画像）を配信するためのマウント
-app.mount("/thumbnails", StaticFiles(directory="/thumbnails"), name="thumbnails")
+# app.mount("/thumbnails", StaticFiles(directory="/thumbnails"), name="thumbnails")
 
 def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
     """
@@ -43,7 +47,7 @@ def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
         h, m = divmod(m, 60)
         
         timestamp_str = f"{h:02d}{m:02d}{s:02d}"
-        filename = f"{video_id}_{timestamp_str}.jpg"
+        filename = f"{video_id}_{timestamp_str}.webp"
         
         # APIサーバーのURLをベースにサムネイルURLを構築
         return f"{THUMBNAIL_BASE_URL}/{filename}"
@@ -51,15 +55,16 @@ def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
     except (ValueError, IndexError):
         return ""
 
+# 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
+# 例: "http://localhost:3000,https://your-production-domain.com"
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+origins = [origin.strip() for origin in CORS_ORIGINS.split(',')]
+
 @app.on_event("startup")
 async def startup_event():
     app.state.es = es
 
 # CORSミドルウェアの設定
-origins = [
-    "http://localhost:3000",
-]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
