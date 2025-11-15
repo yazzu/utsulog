@@ -354,7 +354,9 @@ function App() {
                   </div>
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:bottom-full transition-all duration-200 ease-in-out z-20">
                     <div className="bg-black bg-opacity-90 text-white rounded-lg shadow-xl overflow-hidden">
-                      <img src={result.thumbnailUrl} alt={`Video thumbnail at ${formatTimestamp(result.elapsedTime)}`} className="w-full h-auto" />
+                      <a href={`https://www.youtube.com/watch?v=${result.videoId}&t=${elapsedTimeSeconds(result.elapsedTime)}s`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
+                        <img src={result.thumbnailUrl} alt={`Video thumbnail at ${formatTimestamp(result.elapsedTime)}`} className="w-full h-auto" />
+                      </a>
                       <div className="p-3">
                         <p className="text-sm font-semibold mb-1">{result.videoTitle}</p>
                         <a href={`https://www.youtube.com/watch?v=${result.videoId}&t=${elapsedTimeSeconds(result.elapsedTime)}s`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">

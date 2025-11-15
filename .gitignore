@@ -41,14 +41,14 @@ Thumbs.db
 .gemini/
 
 # Project specific
+.gitignore
 *.tsv
 chat_logs/*.json
-api_key.txt
+youtube_api_key.txt
 instraction_log.txt
 enviroment.md
 Elastic_Cound_credentials.csv
 run_ecs_batch.sh
-.gitignore
 utsulog-batch-task-definition.json
 utsulog-api-task-definition.json
 batch/upload_thumbnails.py
@@ -57,3 +57,5 @@ TODO.md
 GEMINI.md
 test/draft.html
 aws_setup_log.txt
+deploy_frontend.sh
+deploy_ecs_api.sh
