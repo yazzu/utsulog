@@ -2,11 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import VideoFilter from './components/VideoFilter';
 
+// APIのベースURLを環境変数から取得
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 // APIから返される動画の型定義
 interface Video {
   videoId: string;
   title: string;
   thumbnail_url: string;
+  publishedAt: string;
 }
 
 // APIから返される検索結果の型定義
@@ -67,7 +71,7 @@ function App() {
 
   // 動画一覧を取得
   useEffect(() => {
-    axios.get('http://localhost:8000/videos')
+    axios.get(`${API_BASE_URL}/videos`)
       .then(response => {
         setVideos(response.data.videos);
       })
@@ -103,7 +107,7 @@ function App() {
     if (authorName) params.append('author_name', authorName);
     if (selectedVideoId) params.append('video_id', selectedVideoId);
 
-    axios.get(`http://localhost:8000/search?${params.toString()}`)
+    axios.get(`${API_BASE_URL}/search?${params.toString()}`)
       .then(response => {
         const { total, results } = response.data;
         if (results.length === 0) {

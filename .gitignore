@@ -54,3 +54,6 @@ utsulog-api-task-definition.json
 batch/upload_thumbnails.py
 videos/videos.ndjson
 TODO.md
+GEMINI.md
+test/draft.html
+aws_setup_log.txt
