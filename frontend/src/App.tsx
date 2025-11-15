@@ -49,6 +49,7 @@ const emojiModules = import.meta.glob('/public/custom_emojis/*.png', { eager: tr
 const emojiFileNames = Object.keys(emojiModules).map(path => decodeURIComponent(path.split('/').pop() || ''));
 
 function App() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -160,10 +161,17 @@ function App() {
   }, [isLoading, hasMore, searchQuery, debouncedSearch]);
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-72 flex-shrink-0 bg-white border-r border-slate-200 p-6 hidden lg:block overflow-y-auto">
-        <h2 className="text-xl font-bold text-slate-800 mb-6">フィルター</h2>
+      <aside className={`fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 p-6 transform transition-transform duration-300 ease-in-out z-30 lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-slate-800">フィルター</h2>
+          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden text-slate-500 hover:text-slate-700">
+            <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
         
         {/* Date Filter */}
         <div className="space-y-4">
@@ -238,18 +246,33 @@ function App() {
         </div>
       </aside>
 
+      {/* Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
           <header className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">うつろぐ！</h1>
-            <p className="text-slate-600">Utsuro CH. 氷室うつろのチャットログを検索できるよ。</p>
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-3xl font-bold text-slate-900">うつろぐ❄️🖋</h1>
+              <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden text-slate-600 hover:text-slate-800">
+                <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろのチャットログを検索できるよ。</p>
 
             {/* Search Box */}
             <div className="mt-6 relative">
               <input 
                 type="text" 
-                placeholder="検索キーワードを入力（例: 「お疲れ様」 😂）"
+                placeholder="検索キーワードを入力（例: ミニうつろちゃん）"
                 className="w-full pl-5 pr-12 py-3 border border-slate-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
