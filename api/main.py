@@ -40,8 +40,11 @@ def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
         elif len(parts) == 1:
             seconds = parts[0]
 
-        # 3分（180秒）単位で切り捨て
-        rounded_seconds = (seconds // 180) * 180
+        # 3分（180秒）単位で切り捨て。秒数がマイナスの場合は0とする。
+        if seconds < 0:
+            rounded_seconds = 0
+        else:
+            rounded_seconds = (seconds // 180) * 180
         
         m, s = divmod(rounded_seconds, 60)
         h, m = divmod(m, 60)
