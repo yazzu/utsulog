@@ -71,11 +71,10 @@ def main():
         return
 
     # 処理対象の動画リストファイルパスを決定
-    video_list_file = 'videos/videos.ndjson'
+    video_list_file = os.getenv('VIDEOS_NDJSON')
     if data_store_type == 's3':
-        s3_object_name = 'videos/videos.ndjson'
         local_tmp_path = '/tmp/videos.ndjson'
-        if not download_from_s3(bucket_name, s3_object_name, local_tmp_path):
+        if not download_from_s3(bucket_name, video_list_file, local_tmp_path):
             return
         video_list_file = local_tmp_path
 

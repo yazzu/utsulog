@@ -11,6 +11,9 @@ from urllib.parse import urlparse, parse_qs
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL", "https://utsulog-thumbnails.s3.ap-northeast-1.amazonaws.com")
+# 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+origins = [origin.strip() for origin in CORS_ORIGINS.split(',')]
 
 app = FastAPI()
 # Elasticsearchに接続
@@ -57,11 +60,6 @@ def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
 
     except (ValueError, IndexError):
         return ""
-
-# 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
-# 例: "http://localhost:3000,https://your-production-domain.com"
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
-origins = [origin.strip() for origin in CORS_ORIGINS.split(',')]
 
 @app.on_event("startup")
 async def startup_event():
@@ -227,7 +225,8 @@ def search_chat_logs(
             from_=search_query["from"],
             query=search_query["query"],
             sort=search_query["sort"],
-            size=search_query["size"]
+            size=search_query["size"],
+            track_total_hits=20000
         )
         
         # 総ヒット件数を取得

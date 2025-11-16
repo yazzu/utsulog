@@ -10,15 +10,13 @@ ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 INDEX_NAME = "videos"
 # ローカルで実行する際のデフォルトファイルパス
-LOCAL_NDJSON_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'videos_log/videos.ndjson')
+LOCAL_NDJSON_FILE = os.getenv('VIDEOS_NDJSON')
 
 # ELASTICSEARCH_URLが設定されていない場合はエラー
 if not ELASTICSEARCH_URL:
     raise ValueError("ELASTICSEARCH_URL environment variable is not set.")
 
-# ELASTICSEARCH_API_KEYが設定されていない場合はエラー
-if not ELASTICSEARCH_API_KEY:
-    raise ValueError("ELASTICSEARCH_API_KEY environment variable is not set.")
+# ELASTICSEARCH_API_KEYが設定されていない場合は、認証なしで接続を試みる
 
 BULK_ENDPOINT = f"{ELASTICSEARCH_URL}/_bulk"
 MAX_WORKERS = 4  # 並列処理するスレッド数
@@ -28,11 +26,14 @@ CHUNK_SIZE = 500 # 1回のリクエストで送信するドキュメント数
 def _get_auth_headers():
     """
     Elasticsearch Serverless用のAPIキー認証ヘッダーを生成する。
+    APIキーが設定されていない場合は認証ヘッダーを含めない。
     """
-    return {
-        "Content-Type": "application/x-ndjson",
-        "Authorization": f"ApiKey {ELASTICSEARCH_API_KEY}"
+    headers = {
+        "Content-Type": "application/x-ndjson"
     }
+    if ELASTICSEARCH_API_KEY:
+        headers["Authorization"] = f"ApiKey {ELASTICSEARCH_API_KEY}"
+    return headers
 
 def delete_index_if_exists(index_name, es_url):
     """

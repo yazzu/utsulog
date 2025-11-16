@@ -8,9 +8,9 @@ from botocore.exceptions import NoCredentialsError
 
 # --- 設定 ---
 # 対象のチャンネルID
-CHANNEL_ID = 'UC64MV1Dfq3prs9CccXg09rQ'  # 氷室うつろさん
+CHANNEL_ID = os.getenv('CHANNEL_ID')
 # 出力ファイル名
-OUTPUT_NDJSON = 'videos/videos.ndjson'
+OUTPUT_NDJSON = os.getenv('VIDEOS_NDJSON')
 
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'
@@ -84,7 +84,6 @@ def get_video_details(youtube, video_ids):
             published_at_iso = item['snippet']['publishedAt']
             published_at_dt = datetime.fromisoformat(published_at_iso.replace('Z', '+00:00'))
             published_at = published_at_dt.strftime('%Y%m%d%H%M%S')
-
 
             video_details.append({
                 'title': title,

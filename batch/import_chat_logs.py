@@ -5,12 +5,15 @@ import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import boto3
 from botocore.exceptions import ClientError
+import shutil
 
 # --- 設定 ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 INDEX_NAME = "youtube-chat-logs"
-LOCAL_CHAT_LOGS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'chat_logs')
+LOCAL_CHAT_LOGS_DIR = os.getenv("LOCAL_CHAT_LOGS_DIR")
+LOCAL_CHAT_LOGS_PROCESSED_DIR = os.getenv("LOCAL_CHAT_LOGS_PROCESSED_DIR")
+LOCAL_CHAT_LOGS_ERROR_DIR = os.getenv("LOCAL_CHAT_LOGS_ERROR_DIR")
 
 S3_SOURCE_PREFIX = 'chat_logs/'
 S3_PROCESSED_PREFIX = 'chat_logs_processed/'
@@ -20,9 +23,7 @@ S3_ERROR_PREFIX = 'chat_logs_error/'
 if not ELASTICSEARCH_URL:
     raise ValueError("ELASTICSEARCH_URL environment variable is not set.")
 
-# ELASTICSEARCH_API_KEYが設定されていない場合はエラー
-if not ELASTICSEARCH_API_KEY:
-    raise ValueError("ELASTICSEARCH_API_KEY environment variable is not set.")
+# ELASTICSEARCH_API_KEYが設定されていない場合は、認証なしで接続を試みる
 
 BULK_ENDPOINT = f"{ELASTICSEARCH_URL}/_bulk"
 MAX_WORKERS = 4  # 並列処理するスレッド数
@@ -31,11 +32,14 @@ MAX_WORKERS = 4  # 並列処理するスレッド数
 def _get_auth_headers():
     """
     Elasticsearch Serverless用のAPIキー認証ヘッダーを生成する。
+    APIキーが設定されていない場合は認証ヘッダーを含めない。
     """
-    return {
-        "Content-Type": "application/x-ndjson",
-        "Authorization": f"ApiKey {ELASTICSEARCH_API_KEY}"
+    headers = {
+        "Content-Type": "application/x-ndjson"
     }
+    if ELASTICSEARCH_API_KEY:
+        headers["Authorization"] = f"ApiKey {ELASTICSEARCH_API_KEY}"
+    return headers
 
 def create_index_if_not_exists(index_name, es_url):
     """
@@ -99,29 +103,47 @@ def _move_s3_file(s3_client, bucket_name, source_key, destination_prefix):
     except Exception as e:
         print(f"An unexpected error occurred during S3 file move: {e}")
 
-def send_to_elasticsearch(payload, filename, s3_bucket=None, s3_key=None):
+def _move_local_file(source_path, destination_dir):
+    """
+    ローカルファイルを指定されたディレクトリに移動するヘルパー関数。
+    """
+    if not destination_dir:
+        print(f"Warning: Destination directory not set. Cannot move {os.path.basename(source_path)}")
+        return
+    try:
+        os.makedirs(destination_dir, exist_ok=True)
+        destination_path = os.path.join(destination_dir, os.path.basename(source_path))
+        shutil.move(source_path, destination_path)
+        print(f"Moved {os.path.basename(source_path)} to {destination_dir}")
+    except Exception as e:
+        print(f"Error moving file {source_path} to {destination_dir}: {e}")
+
+def send_to_elasticsearch(payload, file_path, data_store_type, s3_bucket=None, s3_key=None):
     """
     生成されたペイロードをElasticsearchに送信する。
-    S3バケットとキーが指定された場合、成功または失敗に応じてS3上のファイルを移動する。
+    データストアのタイプに応じて、成功または失敗したファイルを移動する。
     """
+    filename = os.path.basename(file_path)
     if not payload:
+        if data_store_type == 'local':
+            _move_local_file(file_path, LOCAL_CHAT_LOGS_ERROR_DIR)
         return f"Skipped (empty or read error): {filename}"
 
     headers = _get_auth_headers()
-    s3 = boto3.client('s3') if s3_bucket else None
-    
+    success = False
+    result_message = ""
+
     try:
         response = requests.post(
             BULK_ENDPOINT,
             data=payload.encode('utf-8'),
             headers=headers,
-            timeout=60  # タイムアウトを60秒に設定
+            timeout=60
         )
         response.raise_for_status()
         
         resp_json = response.json()
         if resp_json.get("errors"):
-            # 失敗したアイテムの最初のエラー理由を表示
             for item in resp_json.get("items", []):
                 if item.get("index", {}).get("error"):
                     error_reason = item["index"]["error"].get("reason", "Unknown error")
@@ -129,25 +151,29 @@ def send_to_elasticsearch(payload, filename, s3_bucket=None, s3_key=None):
                     break
             else:
                 result_message = f"Failed: {filename} - Unknown error in response."
-            
-            if s3 and s3_key:
-                _move_s3_file(s3, s3_bucket, s3_key, S3_ERROR_PREFIX)
-            return result_message
+            success = False
         else:
             count = len(resp_json.get("items", []))
             result_message = f"Success: {filename} ({count} docs)"
-            if s3 and s3_key:
-                _move_s3_file(s3, s3_bucket, s3_key, S3_PROCESSED_PREFIX)
-            return result_message
+            success = True
             
     except requests.exceptions.RequestException as e:
-        if s3 and s3_key:
-            _move_s3_file(s3, s3_bucket, s3_key, S3_ERROR_PREFIX)
-        return f"Failed (RequestException): {filename} - {e}"
+        result_message = f"Failed (RequestException): {filename} - {e}"
+        success = False
     except Exception as e:
-        if s3 and s3_key:
-            _move_s3_file(s3, s3_bucket, s3_key, S3_ERROR_PREFIX)
-        return f"Failed (Exception): {filename} - {e}"
+        result_message = f"Failed (Exception): {filename} - {e}"
+        success = False
+
+    # 処理結果に基づいてファイルを移動
+    if data_store_type == 's3' and s3_bucket and s3_key:
+        s3 = boto3.client('s3')
+        destination_prefix = S3_PROCESSED_PREFIX if success else S3_ERROR_PREFIX
+        _move_s3_file(s3, s3_bucket, s3_key, destination_prefix)
+    elif data_store_type == 'local':
+        destination_dir = LOCAL_CHAT_LOGS_PROCESSED_DIR if success else LOCAL_CHAT_LOGS_ERROR_DIR
+        _move_local_file(file_path, destination_dir)
+        
+    return result_message
 
 def download_files_from_s3_prefix(bucket_name, s3_prefix, local_dir):
     """
@@ -185,10 +211,12 @@ def download_files_from_s3_prefix(bucket_name, s3_prefix, local_dir):
 
 def main():
     """
-    メイン処理。chat_logsディレクトリ内のJSONファイルを並列で処理する。
+    メイン処理。S3またはローカルディレクトリからJSONファイルを並列で処理する。
     """
     data_store_type = os.getenv('DATA_STORE_TYPE', 'local')
-    target_chat_logs_dir = LOCAL_CHAT_LOGS_DIR
+    
+    files_to_process = []
+    bucket_name = None
 
     if data_store_type == 's3':
         bucket_name = os.getenv('S3_BUCKET_NAME')
@@ -196,42 +224,48 @@ def main():
             print("Error: S3_BUCKET_NAME environment variable is not set.")
             return
         
-        s3_prefix = S3_SOURCE_PREFIX
         local_tmp_dir = '/tmp/chat_logs'
+        downloaded_s3_keys = download_files_from_s3_prefix(bucket_name, S3_SOURCE_PREFIX, local_tmp_dir)
         
-        downloaded_s3_keys = download_files_from_s3_prefix(bucket_name, s3_prefix, local_tmp_dir)
         if not downloaded_s3_keys:
             print("No files downloaded from S3 or an error occurred.")
             return
-        target_chat_logs_dir = local_tmp_dir
+
+        for s3_key in downloaded_s3_keys:
+            filename = os.path.basename(s3_key)
+            local_file_path = os.path.join(local_tmp_dir, filename)
+            if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
+                files_to_process.append({'path': local_file_path, 's3_key': s3_key})
+    
+    else: # local
+        if not LOCAL_CHAT_LOGS_DIR or not os.path.isdir(LOCAL_CHAT_LOGS_DIR):
+            print(f"Error: LOCAL_CHAT_LOGS_DIR is not set or not a valid directory.")
+            return
+
+        for filename in os.listdir(LOCAL_CHAT_LOGS_DIR):
+            if filename.endswith(('.json', '.ndjson')):
+                file_path = os.path.join(LOCAL_CHAT_LOGS_DIR, filename)
+                if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
+                    files_to_process.append({'path': file_path, 's3_key': None})
 
     create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)
 
-    if not os.path.isdir(target_chat_logs_dir):
-        print(f"Error: Directory not found at '{target_chat_logs_dir}'")
-        return
-
-    json_files_with_s3_keys = []
-    for s3_key in downloaded_s3_keys:
-        filename = os.path.basename(s3_key)
-        local_file_path = os.path.join(target_chat_logs_dir, filename)
-        if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
-            json_files_with_s3_keys.append((local_file_path, filename, s3_key))
-
-    if not json_files_with_s3_keys:
+    if not files_to_process:
         print("No non-empty JSON files to process.")
         return
 
-    print(f"Found {len(json_files_with_s3_keys)} files to process. Starting import to index '{INDEX_NAME}'...")
+    print(f"Found {len(files_to_process)} files to process. Starting import to index '{INDEX_NAME}'...")
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         future_to_file = {
             executor.submit(
-                lambda p, f, sk: send_to_elasticsearch(generate_bulk_payload(p, INDEX_NAME), f, bucket_name, sk),
-                local_file_path,
-                filename,
-                s3_key
-            ): filename for local_file_path, filename, s3_key in json_files_with_s3_keys
+                send_to_elasticsearch,
+                generate_bulk_payload(file_info['path'], INDEX_NAME),
+                file_info['path'],
+                data_store_type,
+                bucket_name,
+                file_info['s3_key']
+            ): os.path.basename(file_info['path']) for file_info in files_to_process
         }
 
         for future in as_completed(future_to_file):
