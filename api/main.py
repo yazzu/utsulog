@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse, parse_qs
 
 # 環境変数からElasticsearchのホストを取得
-ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://elasticsearch:9200")
+ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL", "https://utsulog-thumbnails.s3.ap-northeast-1.amazonaws.com")
 # 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
@@ -21,9 +21,6 @@ if ELASTICSEARCH_API_KEY:
     es = Elasticsearch(ELASTICSEARCH_HOST, api_key=ELASTICSEARCH_API_KEY)
 else:
     es = Elasticsearch(ELASTICSEARCH_HOST)
-
-# 静的ファイル（サムネイル画像）を配信するためのマウント
-# app.mount("/thumbnails", StaticFiles(directory="/thumbnails"), name="thumbnails")
 
 def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
     """

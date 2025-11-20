@@ -28,10 +28,9 @@ services:
       - "8000:8000"
     volumes:
       - ./api:/app
-      - /mnt/f/Dev/python_projects/youtube_tools/thumbnails_webp:/thumbnails
     environment:
-      - THUMBNAIL_BASE_URL=http://localhost:8000/thumbnails
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - THUMBNAIL_BASE_URL=http://localhost:3000/thumbnails
+      - ELASTICSEARCH_HOST=http://elasticsearch:9200
       - ELASTICSEARCH_API_KEY=
       - CORS_ORIGINS=http://localhost:3000
     command: uvicorn main:app --host 0.0.0.0 --port 8000
@@ -45,6 +44,7 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
+      - /mnt/f/Dev/utsulog/thumbnails_webp:/app/thumbnails
     command: npm run dev
 
   batch:
@@ -55,20 +55,19 @@ services:
       - .:/app
       - /mnt/f/Dev/utsulog/videos:/app/videos # 動画リストNDJSON保存用
       - /mnt/f/Dev/utsulog/chat_logs:/app/chat_logs # チャットログ保存用
-      - /mnt/f/Dev/utsulog/chat_logs_processed:/app/chat_logs_processed # 処理済チャットログ保存用
-      - /mnt/f/Dev/utsulog/chat_logs_error:/app/chat_logs_error # エラーチャットログ保存用
       - /mnt/f/Dev/utsulog/thumbnails_webp:/thumbnails # サムネイル保存用
+      - /mnt/f/Dev/utsulog/videofiles:/app/videofiles # 動画ファイル一覧
     environment:
       - DATA_STORE_TYPE=local
       - S3_BUCKET_NAME=
-      - PROXY_URL=
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - ELASTICSEARCH_API_KEY=
       - VIDEOS_NDJSON=videos/videos.ndjson # S3 Bucket用オブジェクト名
-      - LOCAL_CHAT_LOGS_DIR=/app/chat_logs # チャットログ保存用
-      - LOCAL_CHAT_LOGS_PROCESSED_DIR=/app/chat_logs_processed # 処理済チャットログ保存用
-      - LOCAL_CHAT_LOGS_ERROR_DIR=/app/chat_logs_error # エラーチャットログ保存用
+      - VIDEOFILES_DIR=/app/videofiles # 動画ファイル保存用
+      - LOCAL_CHAT_LOGS_DIR=/app/chat_logs/chat_logs # チャットログ保存用
+      - LOCAL_CHAT_LOGS_PROCESSED_DIR=/app/chat_logs/chat_logs_processed # 処理済チャットログ保存用
+      - LOCAL_CHAT_LOGS_ERROR_DIR=/app/chat_logs/chat_logs_error # エラーチャットログ保存用
       - CHANNEL_ID=UC64MV1Dfq3prs9CccXg09rQ # 氷室うつろさん
     depends_on:
       - elasticsearch

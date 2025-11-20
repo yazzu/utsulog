@@ -130,10 +130,7 @@ def main():
 
             # チャットログを取得
             try:
-                if proxy_url:
-                    chat = pytchat.create(video_id=video_id, proxy=proxy_url)
-                else:
-                    chat = pytchat.create(video_id=video_id)
+                chat = pytchat.create(video_id=video_id)
             except pytchat.exceptions.InvalidVideoIdException as e:
                 print(f"  Could not retrieve chat for video ID: {video_id}. The video may be private or deleted. Error: {e}")
                 continue

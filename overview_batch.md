@@ -5,10 +5,9 @@
 
 ## 詳細
 1. get_videos.py
-    - https://www.youtube.com/@Utsuro_himuro/streams から 動画の一覧を取得してテキストに保存する
+    - https://www.youtube.com/@Utsuro_himuro/streams から 動画の一覧を取得して videos/videos.ndjson に保存する
         - ファイル形式
-            - タブ区切り UTF-8
-            - ヘッダーあり
+            - JSON UTF-8
         - カラム
             - title
             - video_url
@@ -16,10 +15,10 @@
             - publishedAt
                 - yyyymmddHHMMSS 形式
         - ファイル名
-            - utsuro_himuro_streams.tsv
+            - videos.ndjson
 
 2. get_chatlog.py
-    - utsuro_himuro_streams.tsv から 順に 動画のチャットリプレイを取得してJSOLファイルの保存する
+    - videos.ndjson から 順に 動画のチャットリプレイを取得してJSOLファイルの保存する
         - pytchat を 利用する
         - JSON形式
             - elasticsearch 投入用 JSON
@@ -36,6 +35,17 @@
                 }
         - ファイル名
             {video_id}.json
+
+3.dl_video.py
+    - videos.ndjson から 順に 動画ファイルをダウンロードして保存する
+        - yt-dlp を 利用する
+        - 画質は 360p
+        - 音声は ソース
+        - ファイル名は {publishedAt}_[{videoId}]_{title}
+        - title は pathvalidate で sanitize_filename する
+        - 保存先は 環境変数 VIDEOFILES_DIR
+        - 保存先に同名ファイルがある場合は スキップ
+
 
 ## 機能外要件
 
