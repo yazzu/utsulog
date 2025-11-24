@@ -19,13 +19,13 @@ The batch system runs periodically to gather the latest chat logs and index them
 
 ```
 ┌───────────────────┐      ┌───────────────────┐      ┌───────────────────────┐      ┌─────────────────┐
-│  get_videos.py    │───►│  get_chatlog.py   │───►│ import_chat_logs.py │───►│  Elasticsearch  │
+│  get_videos.py    │───►│  get_chatlog.py   │───►│ import_videos/chat_logs.py │───►│  Elasticsearch  │
 └───────────────────┘      └───────────────────┘      └───────────────────────┘      └─────────────────┘
        │                      │                      │                                    ▲
        ▼                      ▼                      ▼                                    │
 - Fetches video list     - Downloads chat logs  - Processes logs & bulk                  │
   from YouTube channel     for each video         inserts into Elasticsearch             │
-  (using yt-dlp)           (using yt-dlp)                                                │
+                            (using pychat)                                                │
                                                                                          │
 ```
 
@@ -107,7 +107,9 @@ The frontend and API services are configured with live reloading, so any changes
 ├── api/          # FastAPI backend server
 ├── batch/        # Python scripts for data collection
 ├── frontend/     # React frontend application
+├── videos/       # (Generated) video List data
 ├── chat_logs/    # (Generated) Raw chat log data
+├── thumbnails/   # (Generated) thumbnail data
 ├── docker-compose.yml
 └── README.md
 ```
