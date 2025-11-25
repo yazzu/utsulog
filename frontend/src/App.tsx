@@ -90,7 +90,7 @@ function App() {
       setTotalResults(0);
       return;
     }
-    
+
     if (reset) {
       setSearchResults([]);
       setFrom(0);
@@ -172,16 +172,16 @@ function App() {
             </svg>
           </button>
         </div>
-        
+
         {/* Date Filter */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-slate-600 uppercase">コメント投稿日</h3>
           <div>
             <label htmlFor="date-from" className="block text-sm font-medium text-slate-700 mb-1">From</label>
-            <input 
-              type="date" 
-              id="date-from" 
-              name="date-from" 
+            <input
+              type="date"
+              id="date-from"
+              name="date-from"
               className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -189,10 +189,10 @@ function App() {
           </div>
           <div>
             <label htmlFor="date-to" className="block text-sm font-medium text-slate-700 mb-1">To</label>
-            <input 
-              type="date" 
-              id="date-to" 
-              name="date-to" 
+            <input
+              type="date"
+              id="date-to"
+              name="date-to"
               className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
@@ -204,11 +204,11 @@ function App() {
         <div className="mt-8">
           <h3 className="text-sm font-semibold text-slate-600 uppercase mb-4">投稿者名</h3>
           <div className="relative">
-            <input 
-              type="text" 
-              id="author-search" 
-              name="author-search" 
-              placeholder="投稿者名で検索..." 
+            <input
+              type="text"
+              id="author-search"
+              name="author-search"
+              placeholder="投稿者名で検索..."
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               value={authorName}
               onChange={(e) => setAuthorName(e.target.value)}
@@ -248,7 +248,7 @@ function App() {
 
       {/* Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
@@ -259,25 +259,24 @@ function App() {
         <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
           <header className="mb-8">
             <div className="flex items-center justify-between mb-2">
-              <img src="/title.png" alt="うつろぐ" className="block sm:h-[100px] w-auto h-[60px]" />
+              <img src="/title.png" alt="うつログ❄️🖋️" className="block sm:h-[100px] w-auto h-[60px]" />
               <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden text-slate-600 hover:text-slate-800">
                 <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
             </div>
-            <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろのチャットログを検索できるよ。</p>
-
+            <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろの配信チャットのログを検索できるよ。</p>
             {/* Search Box */}
             <div className="mt-6 relative">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="検索キーワードを入力（例: ミニうつろ）"
                 className="w-full pl-5 pr-12 py-3 border border-slate-300 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
-              <button 
+              <button
                 onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
                 className="absolute inset-y-0 right-0 flex items-center justify-center w-12 h-full text-slate-500 hover:text-blue-600 rounded-full focus:outline-none"
                 aria-label="絵文字ピッカーを開く"
@@ -287,7 +286,7 @@ function App() {
 
               {/* Emoji Picker */}
               {emojiPickerOpen && (
-                <div 
+                <div
                   className="absolute top-full right-0 mt-2 w-72 bg-white border border-slate-200 rounded-lg shadow-xl z-10 p-4"
                 >
                   <h4 className="text-sm font-semibold text-slate-700 mb-3">カスタム絵文字</h4>
@@ -313,8 +312,8 @@ function App() {
             {/* Exact Match Toggle */}
             <div className="flex justify-end mt-2 mr-4">
               <label className="flex items-center space-x-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   checked={isExactMatch}
                   onChange={(e) => setIsExactMatch(e.target.checked)}
