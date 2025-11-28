@@ -30,8 +30,10 @@ services:
       - ./api:/app
     environment:
       - THUMBNAIL_BASE_URL=http://localhost:3000/thumbnails
-      - ELASTICSEARCH_HOST=http://elasticsearch:9200
-      - ELASTICSEARCH_API_KEY=
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-http://elasticsearch:9200}
+      - ELASTICSEARCH_API_KEY=${ELASTICSEARCH_API_KEY}
+      - VIDEOS_INDEX_NAME=${VIDEOS_INDEX_NAME:-videos}
+      - CHAT_LOGS_INDEX_NAME=${CHAT_LOGS_INDEX_NAME:-youtube-chat-logs}
       - CORS_ORIGINS=http://localhost:3000
     command: uvicorn main:app --host 0.0.0.0 --port 8000
     restart: on-failure
@@ -59,16 +61,22 @@ services:
       - /mnt/f/Dev/utsulog/videofiles:/app/videofiles # 動画ファイル一覧
     environment:
       - DATA_STORE_TYPE=local
-      - S3_BUCKET_NAME=
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - ELASTICSEARCH_API_KEY=
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_HOST:-http://elasticsearch:9200}
+      - ELASTICSEARCH_API_KEY=${ELASTICSEARCH_API_KEY}
+      - VIDEOS_INDEX_NAME=${VIDEOS_INDEX_NAME:-videos}
+      - CHAT_LOGS_INDEX_NAME=${CHAT_LOGS_INDEX_NAME:-youtube-chat-logs}
       - VIDEOS_NDJSON=videos/videos.ndjson # S3 Bucket用オブジェクト名
       - VIDEOFILES_DIR=/app/videofiles # 動画ファイル保存用
       - LOCAL_CHAT_LOGS_DIR=/app/chat_logs/chat_logs # チャットログ保存用
       - LOCAL_CHAT_LOGS_PROCESSED_DIR=/app/chat_logs/chat_logs_processed # 処理済チャットログ保存用
       - LOCAL_CHAT_LOGS_ERROR_DIR=/app/chat_logs/chat_logs_error # エラーチャットログ保存用
+      - THUMBNAILS_DIR=/thumbnails # サムネイル保存用
       - CHANNEL_ID=UC64MV1Dfq3prs9CccXg09rQ # 氷室うつろさん
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
     depends_on:
       - elasticsearch
 
