@@ -14,6 +14,8 @@ THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL", "https://utsulog-thumbnails
 # 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
 origins = [origin.strip() for origin in CORS_ORIGINS.split(',')]
+VIDEOS_INDEX_NAME = os.getenv("VIDEOS_INDEX_NAME", "videos")
+CHAT_LOGS_INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME", "youtube-chat-logs")
 
 app = FastAPI()
 # Elasticsearchに接続
@@ -101,7 +103,7 @@ def get_videos(request: Request):
 
     try:
         response = es.search(
-            index="videos", 
+            index=VIDEOS_INDEX_NAME, 
             query=search_query["query"],
             sort=search_query["sort"],
             size=search_query["size"]
@@ -218,7 +220,7 @@ def search_chat_logs(
 
     try:
         response = es.search(
-            index="youtube-chat-logs",
+            index=CHAT_LOGS_INDEX_NAME,
             from_=search_query["from"],
             query=search_query["query"],
             sort=search_query["sort"],

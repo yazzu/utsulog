@@ -59,3 +59,4 @@ test/draft.html
 aws_setup_log.txt
 deploy_frontend.sh
 deploy_ecs_api.sh
+.env.*

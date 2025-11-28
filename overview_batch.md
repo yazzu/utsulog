@@ -36,12 +36,3 @@
         1. Elasticsearch から `thumbnail_created: true` かつ `thumbnail_uploaded: true` でない動画IDリストを取得する。
         2. 対象の動画IDに対応するサムネイル画像ファイル（`{video_id}_*.webp`）を検索し、S3にアップロードする。
         3. アップロード完了後、Elasticsearch の該当ドキュメントを `thumbnail_uploaded: true` に更新する。
-
-## 機能外要件
-
-### elasticsearch
-    Elastic Cloud
-        https://my-elasticsearch-project-d32e2f.kb.ap-northeast-1.aws.elastic.cloud/app/elasticsearch/home
-
-### chat log storage
-    https://ap-northeast-1.console.aws.amazon.com/s3/get-started?region=ap-northeast-1

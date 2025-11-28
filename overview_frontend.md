@@ -25,9 +25,6 @@ youtube の chat log を 全文検索して、 チャットのタイムスタン
     - APIサーバーから検索結果（JSONの配列）を受け取る。
     - 結果をループ処理し、タイムスタンプ付きのリンク（例: https://www.youtube.com/watch?v={video_id}&t={timestamp_sec}s）として画面に描画する。
 
-### Layout
-- test/draft.html に Sample Layout がある
-
 #### 画面構成
 - 検索ボックス
     - テキストボックス

@@ -19,7 +19,7 @@ The batch system runs periodically to gather the latest chat logs and index them
 
 ```
 ┌───────────────────┐      ┌───────────────────┐      ┌───────────────────────┐      ┌─────────────────┐
-│  get_videos.py    │───►│  get_chatlog.py   │───►│ import_videos/chat_logs.py │───►│  Elasticsearch  │
+│  get_videos.py    │───►│  get_chatlogs.py   │───►│ import_videos/chat_logs.py │───►│  Elasticsearch  │
 └───────────────────┘      └───────────────────┘      └───────────────────────┘      └─────────────────┘
        │                      │                      │                                    ▲
        ▼                      ▼                      ▼                                    │
