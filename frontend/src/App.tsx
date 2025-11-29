@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import VideoFilter from './components/VideoFilter';
+import InquiryModal from './components/InquiryModal';
 
 // APIのベースURLを環境変数から取得
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -65,6 +66,7 @@ function App() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [isVideoFilterOpen, setIsVideoFilterOpen] = useState(false);
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
@@ -244,6 +246,19 @@ function App() {
             </div>
           )}
         </div>
+
+        {/* Inquiry Link */}
+        <div className="mt-8 pt-6 border-t border-slate-200">
+          <button
+            onClick={() => setIsInquiryOpen(true)}
+            className="flex items-center space-x-3 text-slate-600 hover:text-blue-600 transition-colors w-full"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span className="text-sm font-medium">お問い合わせ</span>
+          </button>
+        </div>
       </aside>
 
       {/* Overlay */}
@@ -384,6 +399,11 @@ function App() {
         videos={videos}
         selectedVideoId={selectedVideoId}
         setSelectedVideoId={setSelectedVideoId}
+      />
+
+      <InquiryModal
+        isOpen={isInquiryOpen}
+        onClose={() => setIsInquiryOpen(false)}
       />
     </div>
   );
