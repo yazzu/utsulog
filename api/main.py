@@ -194,7 +194,42 @@ def search_chat_logs(
             pass # 不正な日付形式は無視
 
     if author_name:
-        filters.append({"term": {"authorName.keyword": author_name}})
+        # author_nameからauthorChannelIdを特定するためのAggregationクエリ
+        # 同一人物が異なる名前（表示名とハンドル名など）で保存されている場合でも、
+        # authorChannelIdを通じて全て取得できるようにする。
+        try:
+            agg_response = es.search(
+                index=CHAT_LOGS_INDEX_NAME,
+                size=0,
+                query={
+                    "term": {
+                        "authorName.keyword": author_name
+                    }
+                },
+                aggregations={
+                    "channel_ids": {
+                        "terms": {
+                            "field": "authorChannelId.keyword",
+                            "size": 10
+                        }
+                    }
+                }
+            )
+            
+            buckets = agg_response.get("aggregations", {}).get("channel_ids", {}).get("buckets", [])
+            channel_ids = [b["key"] for b in buckets]
+            
+            if channel_ids:
+                # 特定されたIDのいずれかに一致すればOK
+                filters.append({"terms": {"authorChannelId.keyword": channel_ids}})
+            else:
+                # IDが見つからない場合は従来通り名前で検索
+                filters.append({"term": {"authorName.keyword": author_name}})
+                
+        except Exception as e:
+            print(f"Error during author aggregation: {e}")
+            # エラー時はフォールバックとして名前で検索
+            filters.append({"term": {"authorName.keyword": author_name}})
 
     if video_id:
         filters.append({"term": {"videoId.keyword": video_id}})

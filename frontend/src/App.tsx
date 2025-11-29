@@ -247,8 +247,32 @@ function App() {
           )}
         </div>
 
-        {/* Inquiry Link */}
-        <div className="mt-8 pt-6 border-t border-slate-200">
+        {/* External Links */}
+        <div className="mt-8 pt-6 border-t border-slate-200 space-y-4">
+          <a
+            href="https://note.com/dapper_kalmia744/m/m308093b55d98"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-3 text-slate-600 hover:text-blue-600 transition-colors w-full"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+            </svg>
+            <span className="text-sm font-medium">お知らせ</span>
+          </a>
+
+          <a
+            href="https://note.com/dapper_kalmia744/m/md4654ebd5871"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-3 text-slate-600 hover:text-blue-600 transition-colors w-full"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span className="text-sm font-medium">開発者ブログ</span>
+          </a>
+
           <button
             onClick={() => setIsInquiryOpen(true)}
             className="flex items-center space-x-3 text-slate-600 hover:text-blue-600 transition-colors w-full"
