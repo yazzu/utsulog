@@ -51,7 +51,6 @@ Elastic_Cound_credentials.csv
 run_ecs_batch.sh
 utsulog-batch-task-definition.json
 utsulog-api-task-definition.json
-batch/upload_thumbnails.py
 videos/videos.ndjson
 TODO.md
 GEMINI.md

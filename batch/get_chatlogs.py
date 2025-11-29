@@ -2,14 +2,12 @@
 import pytchat
 import json
 import os
-import boto3
-from botocore.exceptions import NoCredentialsError, ClientError
 
 def main():
     # 処理対象の動画リストファイルパスを決定
     video_list_file = os.getenv('VIDEOS_NDJSON')
-    local_chat_logs_dir = os.getenv('LOCAL_CHAT_LOGS_DIR')
-    local_chat_logs_processed_dir = os.getenv('LOCAL_CHAT_LOGS_PROCESSED_DIR')
+    local_chat_logs_dir = os.path.join(os.getenv('LOCAL_CHAT_LOGS_DIR'), "chat_logs")
+    local_chat_logs_processed_dir = os.path.join(os.getenv('LOCAL_CHAT_LOGS_DIR'), "chat_logs_processed")
 
     if not os.path.exists(video_list_file):
         print(f"Error: Video list file not found at '{video_list_file}'")

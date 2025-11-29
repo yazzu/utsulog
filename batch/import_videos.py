@@ -3,8 +3,6 @@ import requests
 import json
 from urllib.parse import urlparse, parse_qs
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import boto3
-from botocore.exceptions import ClientError
 
 # --- 設定 ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
@@ -62,16 +60,15 @@ def extract_video_id(video_info):
     """
     動画情報からvideo_idを抽出する
     """
-    video_id = video_info.get("videoId")
     video_url = video_info.get("video_url")
-    if not video_id and video_url:
+    if video_url:
         try:
             parsed_url = urlparse(video_url)
             query_params = parse_qs(parsed_url.query)
             video_id = query_params.get('v', [None])[0]
-        except Exception:
+            return video_id
+        except Exception as e:
             pass
-    return video_id
 
 def generate_bulk_payload_from_chunk(chunk, index_name):
     """
@@ -87,21 +84,12 @@ def generate_bulk_payload_from_chunk(chunk, index_name):
         try:
             video_info = json.loads(line)
             video_id = extract_video_id(video_info)
-            
-            if not video_id:
-                # video_idがない場合は自動ID生成になるが、ステータス管理のためにはIDが必要
-                # ここではスキップするか、元の行をそのまま送るか。
-                # 一貫性のため、video_id必須とするのが望ましいが、フォールバックとしてindexアクションを使う
-                action_meta = json.dumps({"index": {"_index": index_name}})
-                lines.append(action_meta)
-                lines.append(line)
-            else:
+            if video_id:
                 # updateアクションとdoc_as_upsertを使用
                 action_meta = json.dumps({"update": {"_index": index_name, "_id": video_id}})
                 doc_payload = json.dumps({"doc": video_info, "doc_as_upsert": True})
                 lines.append(action_meta)
                 lines.append(doc_payload)
-                
         except json.JSONDecodeError:
             continue
 
@@ -150,45 +138,11 @@ def send_to_elasticsearch(payload, chunk_index):
     except Exception as e:
         return f"Failed chunk {chunk_index} (Exception): {e}"
 
-def download_from_s3(bucket_name, s3_file_name, local_file_path):
-    """
-    S3からファイルをダウンロードする
-    """
-    s3 = boto3.client('s3')
-    try:
-        print(f"Downloading s3://{bucket_name}/{s3_file_name} to {local_file_path}")
-        os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
-        s3.download_file(bucket_name, s3_file_name, local_file_path)
-        return True
-    except ClientError as e:
-        if e.response['Error']['Code'] == '404':
-            print(f"Error: The object does not exist in S3: s3://{bucket_name}/{s3_file_name}")
-        else:
-            print(f"An unexpected error occurred during S3 download: {e}")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return False
-
 def main():
     """
     メイン処理。NDJSONファイルをチャンクに分割し、並列で処理する。
     """
-    data_store_type = os.getenv('DATA_STORE_TYPE', 'local')
     target_ndjson_file = LOCAL_NDJSON_FILE
-
-    if data_store_type == 's3':
-        bucket_name = os.getenv('S3_BUCKET_NAME')
-        if not bucket_name:
-            print("Error: S3_BUCKET_NAME environment variable is not set.")
-            return
-        
-        s3_object_name = os.path.join('videos', os.path.basename(LOCAL_NDJSON_FILE))
-        local_tmp_path = os.path.join('/tmp', os.path.basename(LOCAL_NDJSON_FILE))
-        
-        if not download_from_s3(bucket_name, s3_object_name, local_tmp_path):
-            return
-        target_ndjson_file = local_tmp_path
     
     # インデックス削除処理（delete_index_if_exists）は廃止
     create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)

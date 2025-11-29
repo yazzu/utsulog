@@ -86,6 +86,7 @@ def main():
     unprocessed_ids = get_unprocessed_video_ids()
     if unprocessed_ids is not None:
         print(f"Found {len(unprocessed_ids)} videos pending thumbnail generation in Elasticsearch.")
+    print(f"{unprocessed_ids}")
     
     video_files = glob.glob(os.path.join(video_dir, "*.mp4"))
     
@@ -161,6 +162,7 @@ def main():
                 
                 convert_command = [
                     "ffmpeg",
+                    "-y", # Overwrite output files without asking
                     "-i", file_path,
                     "-q:v", "75", # WebP quality
                     new_path

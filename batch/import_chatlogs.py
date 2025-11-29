@@ -3,21 +3,15 @@ import os
 import requests
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import boto3
-from botocore.exceptions import ClientError
 import shutil
 
 # --- 設定 ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME", "youtube-chat-logs")
-LOCAL_CHAT_LOGS_DIR = os.getenv("LOCAL_CHAT_LOGS_DIR")
-LOCAL_CHAT_LOGS_PROCESSED_DIR = os.getenv("LOCAL_CHAT_LOGS_PROCESSED_DIR")
-LOCAL_CHAT_LOGS_ERROR_DIR = os.getenv("LOCAL_CHAT_LOGS_ERROR_DIR")
-
-S3_SOURCE_PREFIX = 'chat_logs/'
-S3_PROCESSED_PREFIX = 'chat_logs_processed/'
-S3_ERROR_PREFIX = 'chat_logs_error/'
+LOCAL_CHAT_LOGS_DIR = os.path.join(os.getenv('LOCAL_CHAT_LOGS_DIR'), "chat_logs")
+LOCAL_CHAT_LOGS_PROCESSED_DIR = os.path.join(os.getenv('LOCAL_CHAT_LOGS_DIR'), "chat_logs_processed")
+LOCAL_CHAT_LOGS_ERROR_DIR = os.path.join(os.getenv('LOCAL_CHAT_LOGS_DIR'), "chat_logs_error")
 
 # ELASTICSEARCH_URLが設定されていない場合はエラー
 if not ELASTICSEARCH_URL:
@@ -84,25 +78,6 @@ def generate_bulk_payload(file_path, index_name):
         print(f"Error reading file {os.path.basename(file_path)}: {e}")
         return None
 
-def _move_s3_file(s3_client, bucket_name, source_key, destination_prefix):
-    """
-    S3上のファイルを指定されたプレフィックスに移動するヘルパー関数。
-    """
-    filename = os.path.basename(source_key)
-    destination_key = f"{destination_prefix}{filename}"
-    try:
-        s3_client.copy_object(
-            Bucket=bucket_name,
-            CopySource={'Bucket': bucket_name, 'Key': source_key},
-            Key=destination_key
-        )
-        s3_client.delete_object(Bucket=bucket_name, Key=source_key)
-        print(f"Moved s3://{bucket_name}/{source_key} to s3://{bucket_name}/{destination_key}")
-    except ClientError as e:
-        print(f"Error moving S3 file {source_key} to {destination_key}: {e}")
-    except Exception as e:
-        print(f"An unexpected error occurred during S3 file move: {e}")
-
 def _move_local_file(source_path, destination_dir):
     """
     ローカルファイルを指定されたディレクトリに移動するヘルパー関数。
@@ -118,15 +93,14 @@ def _move_local_file(source_path, destination_dir):
     except Exception as e:
         print(f"Error moving file {source_path} to {destination_dir}: {e}")
 
-def send_to_elasticsearch(payload, file_path, data_store_type, s3_bucket=None, s3_key=None):
+def send_to_elasticsearch(payload, file_path):
     """
     生成されたペイロードをElasticsearchに送信する。
     データストアのタイプに応じて、成功または失敗したファイルを移動する。
     """
     filename = os.path.basename(file_path)
     if not payload:
-        if data_store_type == 'local':
-            _move_local_file(file_path, LOCAL_CHAT_LOGS_ERROR_DIR)
+        _move_local_file(file_path, LOCAL_CHAT_LOGS_ERROR_DIR)
         return f"Skipped (empty or read error): {filename}"
 
     headers = _get_auth_headers()
@@ -165,88 +139,26 @@ def send_to_elasticsearch(payload, file_path, data_store_type, s3_bucket=None, s
         success = False
 
     # 処理結果に基づいてファイルを移動
-    if data_store_type == 's3' and s3_bucket and s3_key:
-        s3 = boto3.client('s3')
-        destination_prefix = S3_PROCESSED_PREFIX if success else S3_ERROR_PREFIX
-        _move_s3_file(s3, s3_bucket, s3_key, destination_prefix)
-    elif data_store_type == 'local':
-        destination_dir = LOCAL_CHAT_LOGS_PROCESSED_DIR if success else LOCAL_CHAT_LOGS_ERROR_DIR
-        _move_local_file(file_path, destination_dir)
+    destination_dir = LOCAL_CHAT_LOGS_PROCESSED_DIR if success else LOCAL_CHAT_LOGS_ERROR_DIR
+    _move_local_file(file_path, destination_dir)
         
     return result_message
 
-def download_files_from_s3_prefix(bucket_name, s3_prefix, local_dir):
-    """
-    S3の特定のプレフィックスから全ファイルをダウンロードする
-    """
-    s3 = boto3.client('s3')
-    paginator = s3.get_paginator('list_objects_v2')
-    pages = paginator.paginate(Bucket=bucket_name, Prefix=s3_prefix)
-    
-    download_count = 0
-    downloaded_s3_keys = []
-    try:
-        os.makedirs(local_dir, exist_ok=True)
-        for page in pages:
-            for obj in page.get('Contents', []):
-                s3_key = obj['Key']
-                # プレフィックス自体やフォルダのようなオブジェクトはスキップ
-                if s3_key.endswith('/'):
-                    continue
-                
-                local_file_path = os.path.join(local_dir, os.path.basename(s3_key))
-                
-                print(f"Downloading s3://{bucket_name}/{s3_key} to {local_file_path}")
-                s3.download_file(bucket_name, s3_key, local_file_path)
-                download_count += 1
-                downloaded_s3_keys.append(s3_key)
-        print(f"Downloaded {download_count} files from S3.")
-        return downloaded_s3_keys
-    except ClientError as e:
-        print(f"An error occurred during S3 download: {e}")
-        return []
-    except Exception as e:
-        print(f"An unexpected error occurred: {e}")
-        return []
-
 def main():
     """
-    メイン処理。S3またはローカルディレクトリからJSONファイルを並列で処理する。
+    メイン処理。ローカルディレクトリからJSONファイルを並列で処理する。
     """
-    data_store_type = os.getenv('DATA_STORE_TYPE', 'local')
-    
     files_to_process = []
-    bucket_name = None
 
-    if data_store_type == 's3':
-        bucket_name = os.getenv('S3_BUCKET_NAME')
-        if not bucket_name:
-            print("Error: S3_BUCKET_NAME environment variable is not set.")
-            return
-        
-        local_tmp_dir = '/tmp/chat_logs'
-        downloaded_s3_keys = download_files_from_s3_prefix(bucket_name, S3_SOURCE_PREFIX, local_tmp_dir)
-        
-        if not downloaded_s3_keys:
-            print("No files downloaded from S3 or an error occurred.")
-            return
+    if not LOCAL_CHAT_LOGS_DIR or not os.path.isdir(LOCAL_CHAT_LOGS_DIR):
+        print(f"Error: LOCAL_CHAT_LOGS_DIR is not set or not a valid directory.")
+        return
 
-        for s3_key in downloaded_s3_keys:
-            filename = os.path.basename(s3_key)
-            local_file_path = os.path.join(local_tmp_dir, filename)
-            if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
-                files_to_process.append({'path': local_file_path, 's3_key': s3_key})
-    
-    else: # local
-        if not LOCAL_CHAT_LOGS_DIR or not os.path.isdir(LOCAL_CHAT_LOGS_DIR):
-            print(f"Error: LOCAL_CHAT_LOGS_DIR is not set or not a valid directory.")
-            return
-
-        for filename in os.listdir(LOCAL_CHAT_LOGS_DIR):
-            if filename.endswith(('.json', '.ndjson')):
-                file_path = os.path.join(LOCAL_CHAT_LOGS_DIR, filename)
-                if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
-                    files_to_process.append({'path': file_path, 's3_key': None})
+    for filename in os.listdir(LOCAL_CHAT_LOGS_DIR):
+        if filename.endswith(('.json', '.ndjson')):
+            file_path = os.path.join(LOCAL_CHAT_LOGS_DIR, filename)
+            if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
+                files_to_process.append({'path': file_path})
 
     create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)
 
@@ -261,10 +173,7 @@ def main():
             executor.submit(
                 send_to_elasticsearch,
                 generate_bulk_payload(file_info['path'], INDEX_NAME),
-                file_info['path'],
-                data_store_type,
-                bucket_name,
-                file_info['s3_key']
+                file_info['path']
             ): os.path.basename(file_info['path']) for file_info in files_to_process
         }
 

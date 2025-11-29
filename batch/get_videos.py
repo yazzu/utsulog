@@ -111,26 +111,6 @@ def write_to_ndjson(video_details, file_path):
             
     print(f"Successfully wrote data to {file_path}")
 
-
-def upload_to_s3(local_file_path, bucket_name, s3_file_name):
-    """
-    ファイルをS3にアップロードする
-    """
-    s3 = boto3.client('s3')
-    try:
-        s3.upload_file(local_file_path, bucket_name, s3_file_name)
-        print(f"Successfully uploaded {local_file_path} to s3://{bucket_name}/{s3_file_name}")
-        return True
-    except FileNotFoundError:
-        print(f"Error: The file was not found: {local_file_path}")
-        return False
-    except NoCredentialsError:
-        print("Error: AWS credentials not found.")
-        return False
-    except Exception as e:
-        print(f"An unexpected error occurred during S3 upload: {e}")
-        return False
-
 def main():
     """
     メイン処理
@@ -154,24 +134,6 @@ def main():
 
     # 3. NDJSONファイルに書き込み
     write_to_ndjson(video_details, OUTPUT_NDJSON)
-
-    # 環境変数に応じてS3にアップロード
-    data_store_type = os.getenv('DATA_STORE_TYPE', 'local')
-    
-    if data_store_type == 's3':
-        bucket_name = os.getenv('S3_BUCKET_NAME')
-        if not bucket_name:
-            print("Error: S3_BUCKET_NAME environment variable is not set.")
-            return
-            
-        # S3上のファイルパス (例: videos/videos.ndjson)
-        s3_object_name = os.path.join('videos', os.path.basename(OUTPUT_NDJSON))
-        
-        print(f"DATA_STORE_TYPE is 's3'. Uploading to S3 bucket: {bucket_name}")
-        upload_to_s3(OUTPUT_NDJSON, bucket_name, s3_object_name)
-    else:
-        print("DATA_STORE_TYPE is 'local'. Skipping S3 upload.")
-
 
 if __name__ == '__main__':
     main()
