@@ -24,6 +24,8 @@ interface SearchResult {
   message: string;
   videoTitle: string;
   thumbnailUrl: string;
+  authorChannelId: string;
+  authorIconUrl: string;
 }
 
 // elapsedTime (hh:mm:ss) を秒に変換するヘルパー関数
@@ -376,7 +378,14 @@ function App() {
                     <div className="relative bg-white/80 p-5 shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-3">
-                          <img src={`https://placehold.co/40x40/cbd5e1/475569?text=${result.author.charAt(0)}`} alt={`${result.author} Avatar`} className="w-10 h-10 rounded-full" />
+                          <img
+                            src={`${result.authorIconUrl}`}
+                            onError={(e) => {
+                              e.currentTarget.src = `https://placehold.co/40x40/cbd5e1/475569?text=${result.author.charAt(0)}`;
+                            }}
+                            alt={`${result.author} Avatar`}
+                            className="w-10 h-10 rounded-full"
+                          />
                           <div>
                             <p className="font-semibold text-slate-800">{result.author}</p>
                             <p className="text-sm text-slate-500">動画: 「{result.videoTitle}」</p>

@@ -4,3 +4,5 @@ requests
 boto3
 yt-dlp
 pathvalidate
+Pillow
+elasticsearch<=8.13.4

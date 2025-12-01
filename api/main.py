@@ -10,12 +10,13 @@ from urllib.parse import urlparse, parse_qs
 # 環境変数からElasticsearchのホストを取得
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
-THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL", "https://utsulog-thumbnails.s3.ap-northeast-1.amazonaws.com")
+THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL")
 # 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+CORS_ORIGINS = os.getenv("CORS_ORIGINS")
 origins = [origin.strip() for origin in CORS_ORIGINS.split(',')]
-VIDEOS_INDEX_NAME = os.getenv("VIDEOS_INDEX_NAME", "videos")
-CHAT_LOGS_INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME", "youtube-chat-logs")
+VIDEOS_INDEX_NAME = os.getenv("VIDEOS_INDEX_NAME")
+CHAT_LOGS_INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME")
+AUTHOR_ICON_BASE_URL = os.getenv("AUTHOR_ICON_BASE_URL") 
 
 app = FastAPI()
 # Elasticsearchに接続
@@ -59,6 +60,14 @@ def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
 
     except (ValueError, IndexError):
         return ""
+
+def calculate_author_icon_url(author_channel_id: str) -> str:
+    """
+    authorChannelIdから投稿者アイコン画像のURLを生成する。
+    """
+    if not author_channel_id:
+        return ""
+    return f"{AUTHOR_ICON_BASE_URL}/{author_channel_id}.webp"
 
 @app.on_event("startup")
 async def startup_event():
@@ -270,9 +279,8 @@ def search_chat_logs(
         results = []
         for hit in response["hits"]["hits"]:
             source = hit["_source"]
-            
             thumbnail_url = calculate_thumbnail_url(source.get("videoId"), source.get("elapsedTime"))
-
+            author_icon_url = calculate_author_icon_url(source.get("authorChannelId"))
             result = {
                 "id": hit["_id"],
                 "videoId": source.get("videoId"),
@@ -283,6 +291,7 @@ def search_chat_logs(
                 "message": source.get("message"),
                 "author": source.get("authorName"),
                 "authorChannelId": source.get("authorChannelId"),
+                "authorIconUrl": author_icon_url,
                 "thumbnailUrl": thumbnail_url,
             }
             results.append(result)
