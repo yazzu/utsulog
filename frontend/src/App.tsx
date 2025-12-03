@@ -136,7 +136,7 @@ function App() {
   useEffect(() => {
     const handler = setTimeout(() => {
       debouncedSearch(searchQuery, true); // 新しい検索なのでリセット
-    }, 300); // 300msのデバウンス
+    }, 500); // 500msのデバウンス
 
     return () => {
       clearTimeout(handler);
