@@ -18,7 +18,10 @@ VIDEOS_INDEX_NAME = os.getenv("VIDEOS_INDEX_NAME")
 CHAT_LOGS_INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME")
 AUTHOR_ICON_BASE_URL = os.getenv("AUTHOR_ICON_BASE_URL") 
 
+from mangum import Mangum
+
 app = FastAPI()
+handler = Mangum(app)
 # Elasticsearchに接続
 if ELASTICSEARCH_API_KEY:
     es = Elasticsearch(ELASTICSEARCH_HOST, api_key=ELASTICSEARCH_API_KEY)

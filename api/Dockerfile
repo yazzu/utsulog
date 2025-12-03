@@ -1,16 +1,13 @@
-# Pythonの公式イメージをベースにする
-FROM python:3.9-slim
-
-# 作業ディレクトリを設定
-WORKDIR /app
+# AWS Lambda公式のPythonイメージを使用
+FROM public.ecr.aws/lambda/python:3.11
 
 # 依存関係をインストール
-COPY requirements.txt .
+COPY requirements.txt ${LAMBDA_TASK_ROOT}
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションのソースコードをコピー
-COPY . .
+COPY . ${LAMBDA_TASK_ROOT}
 
-# 8000番ポートでアプリケーションを起動
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Lambdaハンドラーを指定
+CMD [ "main.handler" ]
