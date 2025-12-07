@@ -70,6 +70,7 @@ function App() {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [isVideoFilterOpen, setIsVideoFilterOpen] = useState(false);
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
@@ -138,6 +139,7 @@ function App() {
       q: query,
       from_: (reset ? 0 : from).toString(),
       exact: isExactMatch.toString(),
+      sort_order: sortOrder,
     });
     if (dateFrom) params.append('date_from', dateFrom);
     if (dateTo) params.append('date_to', dateTo);
@@ -163,7 +165,7 @@ function App() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [from, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId]);
+  }, [from, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -174,7 +176,7 @@ function App() {
       clearTimeout(handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId]);
+  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder]);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -417,9 +419,26 @@ function App() {
 
           {/* Search Results */}
           <section className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-800">
-              検索結果 ({totalResults.toLocaleString()}件)
-            </h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-slate-800">
+                検索結果 ({totalResults.toLocaleString()}件)
+              </h3>
+              <button
+                onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                className="flex items-center space-x-1 text-sm text-slate-600 hover:text-blue-600 transition-colors"
+              >
+                <span>投稿日: {sortOrder === 'desc' ? '新しい順' : '古い順'}</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`w-4 h-4 transform transition-transform duration-200 ${sortOrder === 'asc' ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
 
             {searchResults.length > 0 ? (
               searchResults.map((result) => (

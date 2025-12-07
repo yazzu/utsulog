@@ -160,6 +160,7 @@ def search_chat_logs(
     date_to: Optional[str] = None,
     author_name: Optional[str] = None,
     video_id: Optional[str] = None,
+    sort_order: str = "desc",
     request: Request = None
 ):
     """
@@ -258,7 +259,7 @@ def search_chat_logs(
         "sort": [
             {
                 "datetime.keyword": {
-                    "order": "desc"
+                    "order": sort_order
                 }
             }
         ],
