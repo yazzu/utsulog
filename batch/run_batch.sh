@@ -19,7 +19,7 @@ python batch/dl_video.py
 echo "Running gen_thumbnails.py..."
 python batch/gen_thumbnails.py
 echo "Waiting 3 seconds for index refresh..."
-sleep 3
+sleep 5
 echo "Running upload_thumbnails.py..."
 python batch/upload_thumbnails.py
 echo "Batch process finished successfully."
