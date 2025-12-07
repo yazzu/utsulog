@@ -2,6 +2,7 @@
 import pytchat
 import json
 import os
+import emoji
 
 def main():
     # 処理対象の動画リストファイルパスを決定
@@ -67,7 +68,7 @@ def main():
                             "datetime": c.datetime,
                             "elapsedTime": c.elapsedTime,
                             "timestamp": c.timestamp,
-                            "message": c.message,
+                            "message": emoji.emojize(c.message, language='alias'),
                             "authorName": c.author.name,
                             "authorChannelId": c.author.channelId,
                             "id": c.id

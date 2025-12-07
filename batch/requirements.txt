@@ -6,3 +6,4 @@ yt-dlp
 pathvalidate
 Pillow
 elasticsearch<=8.13.4
+emoji

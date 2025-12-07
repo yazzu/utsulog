@@ -65,6 +65,7 @@ function App() {
   const [dateTo, setDateTo] = useState('');
   const [authorName, setAuthorName] = useState('');
   const [customEmojis, setCustomEmojis] = useState<string[]>([]);
+  const [emojiMap, setEmojiMap] = useState<Record<string, string>>({});
   const [videos, setVideos] = useState<Video[]>([]);
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [isVideoFilterOpen, setIsVideoFilterOpen] = useState(false);
@@ -72,7 +73,38 @@ function App() {
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
+
+    // Fetch custom emoji mapping
+    axios.get('/emojis.json')
+      .then(response => {
+        setEmojiMap(response.data);
+      })
+      .catch(error => {
+        console.error("Error fetching emojis:", error);
+      });
   }, []);
+
+  // Format message with emojis and highlighting
+  const formatMessage = useCallback((message: string, query: string) => {
+    if (!message) return '';
+
+    // Split by potential emoji shortcodes
+    const parts = message.split(/(:[^:\s]+:)/g);
+    console.log(parts);
+
+    return parts.map(part => {
+      // Check if it's a known emoji
+      if (emojiMap[part]) {
+        return `<img src="${emojiMap[part]}" alt="${part}" class="w-5 h-5 inline-block align-text-bottom mx-0.5" />`;
+      }
+
+      // Text part: highlight query if present
+      if (query) {
+        return part.replace(new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), "gi"), (match) => `<span class="font-bold text-blue-600">${match}</span>`);
+      }
+      return part;
+    }).join('');
+  }, [emojiMap]);
 
   // 動画一覧を取得
   useEffect(() => {
@@ -396,7 +428,7 @@ function App() {
                           {formatTimestamp(result.elapsedTime)}
                         </span>
                       </div>
-                      <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: result.message.replace(new RegExp(searchQuery, "gi"), (match) => `<span class="font-bold text-blue-600">${match}</span>`) }} />
+                      <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatMessage(result.message, searchQuery) }} />
                     </div>
                   </div>
                   <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:bottom-full transition-all duration-200 ease-in-out z-20">
