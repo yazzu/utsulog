@@ -1,13 +1,11 @@
-# AWS Lambda公式のPythonイメージを使用
-FROM public.ecr.aws/lambda/python:3.11
+FROM python:3.11-slim
 
-# 依存関係をインストール
-COPY requirements.txt ${LAMBDA_TASK_ROOT}
-RUN pip install --upgrade pip
+WORKDIR /app
+
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# アプリケーションのソースコードをコピー
-COPY . ${LAMBDA_TASK_ROOT}
+COPY . .
 
-# Lambdaハンドラーを指定
-CMD [ "main.handler" ]
+# ローカル開発用のコマンド
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -66,7 +66,7 @@ The web application allows users to search the indexed chat logs.
   - Elasticsearch
 - **Infrastructure:**
   - Docker & Docker Compose
-  - (Planned) AWS Fargate, S3, Elastic Cloud
+  - (Planned) AWS Lambda, S3, Elastic Cloud
 
 ## Local Development
 

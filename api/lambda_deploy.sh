@@ -12,7 +12,7 @@ echo "Logging in to ECR..."
 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
 echo "Building Docker image..."
-docker build --platform linux/amd64 -t ${ECR_REPO_NAME} .
+docker build --platform linux/amd64 -t ${ECR_REPO_NAME} -f Dockerfile.lambda .
 
 echo "Tagging image..."
 docker tag ${ECR_REPO_NAME}:latest ${IMAGE_URI}
