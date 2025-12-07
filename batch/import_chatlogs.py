@@ -47,10 +47,38 @@ def create_index_if_not_exists(index_name, es_url):
         if response.status_code == 404: # インデックスが存在しない場合
             print(f"Index '{index_name}' does not exist. Creating...")
             # Serverlessではレプリカ数の設定は無視されるか、エラーになる可能性があるため、設定を削除
-            # ただし、既存のコードとの互換性を保つため、空のsettingsでPUTを試みる
-            create_response = requests.put(index_url, headers=headers, json={})
+            # アナライザー設定を追加
+            settings = {
+                "settings": {
+                    "analysis": {
+                        "char_filter": {
+                            "emoji_char_filter": {
+                                "type": "pattern_replace",
+                                "pattern": ":_?([a-zA-Z0-9_]+):",
+                                "replacement": "customemojitoken$1"
+                            }
+                        },
+                        "analyzer": {
+                            "emoji_analyzer": {
+                                "type": "custom",
+                                "char_filter": ["emoji_char_filter"],
+                                "tokenizer": "kuromoji_tokenizer"
+                            }
+                        }
+                    }
+                },
+                "mappings": {
+                    "properties": {
+                        "message": {
+                            "type": "text",
+                            "analyzer": "emoji_analyzer"
+                        }
+                    }
+                }
+            }
+            create_response = requests.put(index_url, headers=headers, json=settings)
             create_response.raise_for_status()
-            print(f"Index '{index_name}' created successfully.")
+            print(f"Index '{index_name}' created successfully with custom analyzer.")
         elif response.status_code == 200:
             print(f"Index '{index_name}' already exists.")
         else:

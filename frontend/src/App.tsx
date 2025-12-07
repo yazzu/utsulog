@@ -360,11 +360,11 @@ function App() {
               {/* Emoji Picker */}
               {emojiPickerOpen && (
                 <div
-                  className="absolute top-full right-0 mt-2 w-72 bg-white border border-slate-200 rounded-lg shadow-xl z-10 p-4"
+                  className="absolute top-full right-0 mt-2 w-[380px] bg-white border border-slate-200 rounded-lg shadow-xl z-20 p-4 max-h-[380px] overflow-y-auto"
                 >
                   <h4 className="text-sm font-semibold text-slate-700 mb-3">カスタム絵文字</h4>
-                  <div className="grid grid-cols-6 gap-2">
-                    {customEmojis.map((fileName) => (
+                  <div className="grid grid-cols-7 gap-1">
+                    {customEmojis.filter(n => n.startsWith('_')).sort().map((fileName) => (
                       <button
                         key={fileName}
                         onClick={() => {
@@ -372,10 +372,29 @@ function App() {
                           setSearchQuery(prev => `${prev}${prev ? ' ' : ''}:${emojiName}:`);
                           setEmojiPickerOpen(false);
                         }}
-                        className="p-1 rounded-md hover:bg-slate-100 transition-colors"
+                        className="p-0.5 rounded-md hover:bg-slate-100 transition-colors flex items-center justify-center h-10 w-10"
                         title={fileName.replace('.png', '')}
                       >
-                        <img src={`/custom_emojis/${fileName}`} alt={fileName} className="w-8 h-8 object-contain" />
+                        <img src={`/custom_emojis/${fileName}`} alt={fileName} className="max-w-full max-h-full object-contain" />
+                      </button>
+                    ))}
+
+                    {customEmojis.some(n => n.startsWith('_')) && customEmojis.some(n => !n.startsWith('_')) && (
+                      <div className="col-span-7 h-px bg-slate-200 my-2"></div>
+                    )}
+
+                    {customEmojis.filter(n => !n.startsWith('_')).sort().map((fileName) => (
+                      <button
+                        key={fileName}
+                        onClick={() => {
+                          const emojiName = fileName.replace('.png', '');
+                          setSearchQuery(prev => `${prev}${prev ? ' ' : ''}:${emojiName}:`);
+                          setEmojiPickerOpen(false);
+                        }}
+                        className="p-0.5 rounded-md hover:bg-slate-100 transition-colors flex items-center justify-center h-10 w-10"
+                        title={fileName.replace('.png', '')}
+                      >
+                        <img src={`/custom_emojis/${fileName}`} alt={fileName} className="max-w-full max-h-full object-contain" />
                       </button>
                     ))}
                   </div>
