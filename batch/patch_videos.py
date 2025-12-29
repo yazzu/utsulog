@@ -1,18 +1,23 @@
 import os
 import requests
 import json
+import base64
 
 # --- 設定 ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
-ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 INDEX_NAME = "videos_v2" # ユーザー指定のインデックス名
+ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA') # 証明書ファイル名
+ELASTICSEARCH_ADMIN = os.getenv('ELASTICSEARCH_ADMIN')
+ELASTICSEARCH_PASSWORD = os.getenv('ELASTICSEARCH_PASSWORD')
 
 def _get_auth_headers():
     headers = {
         "Content-Type": "application/json"
     }
-    if ELASTICSEARCH_API_KEY:
-        headers["Authorization"] = f"ApiKey {ELASTICSEARCH_API_KEY}"
+    if ELASTICSEARCH_ADMIN and ELASTICSEARCH_PASSWORD:
+        auth_str = f"{ELASTICSEARCH_ADMIN}:{ELASTICSEARCH_PASSWORD}"
+        encoded_auth = base64.b64encode(auth_str.encode()).decode()
+        headers["Authorization"] = f"Basic {encoded_auth}"
     return headers
 
 def patch_videos():
@@ -35,7 +40,7 @@ def patch_videos():
 
     try:
         print(f"Updating index '{INDEX_NAME}' at {ELASTICSEARCH_URL}...")
-        response = requests.post(url, headers=_get_auth_headers(), json=payload)
+        response = requests.post(url, headers=_get_auth_headers(), json=payload, verify=ELASTICSEARCH_CA)
         response.raise_for_status()
         
         result = response.json()

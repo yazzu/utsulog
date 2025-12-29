@@ -4,14 +4,17 @@ import requests
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import shutil
+import base64
 
 # --- 設定 ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
-ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME", "youtube-chat-logs")
 LOCAL_CHAT_LOGS_DIR = os.path.join(os.getenv('LOCAL_CHAT_LOGS_DIR'), "chat_logs")
 LOCAL_CHAT_LOGS_PROCESSED_DIR = os.path.join(os.getenv('LOCAL_CHAT_LOGS_DIR'), "chat_logs_processed")
 LOCAL_CHAT_LOGS_ERROR_DIR = os.path.join(os.getenv('LOCAL_CHAT_LOGS_DIR'), "chat_logs_error")
+ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA') # 証明書ファイル名
+ELASTICSEARCH_ADMIN = os.getenv('ELASTICSEARCH_ADMIN')
+ELASTICSEARCH_PASSWORD = os.getenv('ELASTICSEARCH_PASSWORD')
 
 # ELASTICSEARCH_URLが設定されていない場合はエラー
 if not ELASTICSEARCH_URL:
@@ -31,8 +34,10 @@ def _get_auth_headers():
     headers = {
         "Content-Type": "application/x-ndjson"
     }
-    if ELASTICSEARCH_API_KEY:
-        headers["Authorization"] = f"ApiKey {ELASTICSEARCH_API_KEY}"
+    if ELASTICSEARCH_ADMIN and ELASTICSEARCH_PASSWORD:
+        auth_str = f"{ELASTICSEARCH_ADMIN}:{ELASTICSEARCH_PASSWORD}"
+        encoded_auth = base64.b64encode(auth_str.encode()).decode()
+        headers["Authorization"] = f"Basic {encoded_auth}"
     return headers
 
 def create_index_if_not_exists(index_name, es_url):
@@ -43,7 +48,7 @@ def create_index_if_not_exists(index_name, es_url):
     index_url = f"{es_url}/{index_name}"
     headers = _get_auth_headers()
     try:
-        response = requests.head(index_url, headers=headers) # インデックスの存在を確認
+        response = requests.head(index_url, headers=headers, verify=ELASTICSEARCH_CA) # インデックスの存在を確認
         if response.status_code == 404: # インデックスが存在しない場合
             print(f"Index '{index_name}' does not exist. Creating...")
             # Serverlessではレプリカ数の設定は無視されるか、エラーになる可能性があるため、設定を削除
@@ -76,7 +81,7 @@ def create_index_if_not_exists(index_name, es_url):
                     }
                 }
             }
-            create_response = requests.put(index_url, headers=headers, json=settings)
+            create_response = requests.put(index_url, headers=headers, json=settings, verify=ELASTICSEARCH_CA)
             create_response.raise_for_status()
             print(f"Index '{index_name}' created successfully with custom analyzer.")
         elif response.status_code == 200:
@@ -140,7 +145,8 @@ def send_to_elasticsearch(payload, file_path):
             BULK_ENDPOINT,
             data=payload.encode('utf-8'),
             headers=headers,
-            timeout=60
+            timeout=60,
+            verify=ELASTICSEARCH_CA
         )
         response.raise_for_status()
         
@@ -215,7 +221,7 @@ def main():
     print("\nImport process finished.")
     try:
         count_url = f"{ELASTICSEARCH_URL}/{INDEX_NAME}/_count"
-        response = requests.get(count_url, headers=_get_auth_headers())
+        response = requests.get(count_url, headers=_get_auth_headers(), verify=ELASTICSEARCH_CA)
         if response.ok:
             total_docs = response.json().get('count', 'N/A')
             print(f"Total documents in index '{INDEX_NAME}': {total_docs}")

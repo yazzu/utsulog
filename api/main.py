@@ -10,6 +10,8 @@ from urllib.parse import urlparse, parse_qs
 # 環境変数からElasticsearchのホストを取得
 ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
+CF_CLIENT_ID = os.getenv("CF_CLIENT_ID")
+CF_CLIENT_SECRET = os.getenv("CF_CLIENT_SECRET")
 THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL")
 # 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
 CORS_ORIGINS = os.getenv("CORS_ORIGINS")
@@ -23,10 +25,13 @@ from mangum import Mangum
 app = FastAPI()
 handler = Mangum(app)
 # Elasticsearchに接続
-if ELASTICSEARCH_API_KEY:
-    es = Elasticsearch(ELASTICSEARCH_HOST, api_key=ELASTICSEARCH_API_KEY)
+if CF_CLIENT_ID:
+    es = Elasticsearch(ELASTICSEARCH_HOST, api_key=ELASTICSEARCH_API_KEY,headers={
+        "CF-Access-Client-Id": CF_CLIENT_ID,
+        "CF-Access-Client-Secret": CF_CLIENT_SECRET
+    })
 else:
-    es = Elasticsearch(ELASTICSEARCH_HOST)
+    es = Elasticsearch(ELASTICSEARCH_HOST, api_key=ELASTICSEARCH_API_KEY)
 
 def calculate_thumbnail_url(video_id: str, elapsed_time: str) -> str:
     """

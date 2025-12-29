@@ -5,16 +5,21 @@ import mimetypes
 import requests
 import json
 from botocore.exceptions import ClientError
+import base64
 
 # --- 設定 ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
-ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
+ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA') # 証明書ファイル名
+ELASTICSEARCH_ADMIN = os.getenv('ELASTICSEARCH_ADMIN')
+ELASTICSEARCH_PASSWORD = os.getenv('ELASTICSEARCH_PASSWORD')
 INDEX_NAME = os.getenv("VIDEOS_INDEX_NAME")
 
 def _get_auth_headers():
     headers = {"Content-Type": "application/json"}
-    if ELASTICSEARCH_API_KEY:
-        headers["Authorization"] = f"ApiKey {ELASTICSEARCH_API_KEY}"
+    if ELASTICSEARCH_ADMIN and ELASTICSEARCH_PASSWORD:
+        auth_str = f"{ELASTICSEARCH_ADMIN}:{ELASTICSEARCH_PASSWORD}"
+        encoded_auth = base64.b64encode(auth_str.encode()).decode()
+        headers["Authorization"] = f"Basic {encoded_auth}"
     return headers
 
 def get_pending_upload_video_ids():
@@ -42,7 +47,7 @@ def get_pending_upload_video_ids():
     }
     
     try:
-        response = requests.post(url, headers=_get_auth_headers(), json=query)
+        response = requests.post(url, headers=_get_auth_headers(), json=query, verify=ELASTICSEARCH_CA)
         response.raise_for_status()
         hits = response.json().get("hits", {}).get("hits", [])
         return set(h["_id"] for h in hits)
@@ -64,7 +69,7 @@ def update_upload_status(video_id):
         }   
     }
     try:
-        requests.post(url, headers=_get_auth_headers(), json=payload)
+        requests.post(url, headers=_get_auth_headers(), json=payload, verify=ELASTICSEARCH_CA)
     except Exception as e:
         print(f"  Error updating upload status for {video_id}: {e}")
 
