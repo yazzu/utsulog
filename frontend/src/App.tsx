@@ -91,7 +91,6 @@ function App() {
 
     // Split by potential emoji shortcodes
     const parts = message.split(/(:[^:\s]+:)/g);
-    console.log(parts);
 
     return parts.map(part => {
       // Check if it's a known emoji
