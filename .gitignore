@@ -59,3 +59,9 @@ aws_setup_log.txt
 deploy_frontend.sh
 deploy_ecs_api.sh
 .env.*
+cloudfront-config.json
+route53-change.json
+.gitignore
+instraction_log.md
+deploy_ecr_api.sh
+miniutsuro_es_ca.crt
