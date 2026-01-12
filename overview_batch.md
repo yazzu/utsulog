@@ -36,3 +36,27 @@
         1. Elasticsearch から `thumbnail_created: true` かつ `thumbnail_uploaded: true` でない動画IDリストを取得する。
         2. 対象の動画IDに対応するサムネイル画像ファイル（`{video_id}_*.webp`）を検索し、S3にアップロードする。
         3. アップロード完了後、Elasticsearch の該当ドキュメントを `thumbnail_uploaded: true` に更新する。
+
+6. vtt_to_csv.py
+    - vttファイルとvideos.ndjsonファイルをjsonndファイルに変換する
+    - vttファイル名： {datetime}_{videoId}_{title}_fixed.txt
+        - example: 20251130061527_[M83ZGI3ZuaA]_【女剣士アスカ見参！】今度こそ何かのダンジョンをクリアさせてくれ【風来のシレン外伝】_fixed.vtt
+    - videos.ndjsonファイル名：videos.ndjson
+        - example
+            {"title": "【女剣士アスカ見参！】今度こそ何かのダンジョンをクリアさせてくれ【風来のシレン外伝】", "video_url": "https://www.youtube.com/watch?v=M83ZGI3ZuaA", "thumbnail_url": "https://i.ytimg.com/vi/M83ZGI3ZuaA/hqdefault.jpg", "publishedAt": "20251130061527"}
+    - JSONNDファイル名: {basename}_vtt.json
+        - example: 20251130061527_[M83ZGI3ZuaA]_【女剣士アスカ見参！】今度こそ何かのダンジョンをクリアさせてくれ【風来のシレン外伝】_vtt.json
+    - JSONNDファイルの例
+        {
+            "videoId": vtt.filename.videoId,
+            "videoTitle": videos.ndjson.title,
+            "datetime": videos.ndjson.publishedAt + vtt.datetime,
+            "elapsedTime": vtt.datetime,
+            "timestamp": datetime to unixtime milliseconds,
+            "message": vtt.message,
+            "type": "transcript", -- fixed value
+            "authorName": "@Utsuro_himuro", -- fixed value
+            "authorChannelId": "UC64MV1Dfq3prs9CccXg09rQ", -- fixed value
+            "id": generated 40 digit hash
+        }
+    - 同名のJSONNDファイルが存在する場合は、スキップする
