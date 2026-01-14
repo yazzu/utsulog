@@ -441,50 +441,53 @@ function App() {
             </div>
 
             {searchResults.length > 0 ? (
-              searchResults.map((result) => (
-                <div key={result.id} className="relative group">
-                  <div className="relative rounded-lg overflow-hidden">
-                    <div className="absolute inset-0 bg-cover bg-center bg-no-repeat filter grayscale" style={{ backgroundImage: `url(${result.thumbnailUrl})` }}></div>
-                    <div className="relative bg-white/80 p-5 shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={`${result.authorIconUrl}`}
-                            onError={(e) => {
-                              e.currentTarget.src = `https://placehold.co/40x40/cbd5e1/475569?text=${result.author.charAt(0)}`;
-                            }}
-                            alt={`${result.author} Avatar`}
-                            className="w-10 h-10 rounded-full"
-                          />
-                          <div>
-                            <p className="font-semibold text-slate-800">{result.author}</p>
-                            <p className="text-sm text-slate-500">動画: 「{result.videoTitle}」</p>
-                            <p className="text-sm text-slate-500">投稿日: {result.datetime}</p>
+              searchResults.map((result) => {
+                const isChat = result.type === 'chat';
+                return (
+                  <div key={result.id} className={`relative group ${isChat ? 'pl-8 sm:pl-16' : 'pr-8 sm:pr-16'}`}>
+                    <div className="relative rounded-lg overflow-hidden">
+                      <div className="absolute inset-0 bg-cover bg-center bg-no-repeat filter grayscale" style={{ backgroundImage: `url(${result.thumbnailUrl})` }}></div>
+                      <div className={`relative p-5 shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out ${isChat ? 'bg-white/95' : 'bg-blue-50/95'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={`${result.authorIconUrl}`}
+                              onError={(e) => {
+                                e.currentTarget.src = `https://placehold.co/40x40/cbd5e1/475569?text=${result.author.charAt(0)}`;
+                              }}
+                              alt={`${result.author} Avatar`}
+                              className="w-10 h-10 rounded-full"
+                            />
+                            <div>
+                              <p className="font-semibold text-slate-800">{result.author}</p>
+                              <p className="text-sm text-slate-500">動画: 「{result.videoTitle}」</p>
+                              <p className="text-sm text-slate-500">投稿日: {result.datetime}</p>
+                            </div>
                           </div>
+                          <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                            {formatTimestamp(result.elapsedTime)}
+                          </span>
                         </div>
-                        <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                          {formatTimestamp(result.elapsedTime)}
-                        </span>
+                        <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatMessage(result.message, searchQuery) }} />
                       </div>
-                      <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatMessage(result.message, searchQuery) }} />
                     </div>
-                  </div>
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:bottom-full transition-all duration-200 ease-in-out z-20">
-                    <div className="bg-black bg-opacity-90 text-white rounded-lg shadow-xl overflow-hidden">
-                      <a href={`https://www.youtube.com/watch?v=${result.videoId}&t=${elapsedTimeSeconds(result.elapsedTime)}s`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
-                        <img src={result.thumbnailUrl} alt={`Video thumbnail at ${formatTimestamp(result.elapsedTime)}`} className="w-full h-auto" />
-                      </a>
-                      <div className="p-3">
-                        <p className="text-sm font-semibold mb-1">{result.videoTitle}</p>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:bottom-full transition-all duration-200 ease-in-out z-20">
+                      <div className="bg-black bg-opacity-90 text-white rounded-lg shadow-xl overflow-hidden">
                         <a href={`https://www.youtube.com/watch?v=${result.videoId}&t=${elapsedTimeSeconds(result.elapsedTime)}s`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
-                          <svg className="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                          <span>{formatTimestamp(result.elapsedTime)} から再生</span>
+                          <img src={result.thumbnailUrl} alt={`Video thumbnail at ${formatTimestamp(result.elapsedTime)}`} className="w-full h-auto" />
                         </a>
+                        <div className="p-3">
+                          <p className="text-sm font-semibold mb-1">{result.videoTitle}</p>
+                          <a href={`https://www.youtube.com/watch?v=${result.videoId}&t=${elapsedTimeSeconds(result.elapsedTime)}s`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-300 hover:text-blue-200 underline flex items-center space-x-1">
+                            <svg className="w-3 h-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                            <span>{formatTimestamp(result.elapsedTime)} から再生</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             ) : (
               <div className="text-center py-12 text-slate-500">
                 {isLoading ? '検索中...' : (searchQuery || authorName || selectedVideoId ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。')}
