@@ -104,6 +104,19 @@ def parse_vtt_time_check(line):
     # Simple check if line looks like "00:00:00.000 --> 00:00:05.000"
     return '-->' in line
 
+def format_elapsed_time(ms):
+    """
+    Format milliseconds to H:MM:SS or M:SS without leading zeros on hours/minutes.
+    Example: 17000 -> 0:17
+    """
+    seconds = int(ms / 1000)
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    if h > 0:
+        return f"{h}:{m:02}:{s:02}"
+    else:
+        return f"{m}:{s:02}"
+
 def generate_id(video_id, timestamp_ms, message):
     """
     Generate a unique ID for the chat message.
@@ -188,7 +201,7 @@ def main():
                     "videoId": video_id,
                     "videoTitle": video_title,
                     "datetime": datetime.fromtimestamp(abs_timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S'), # This is readable string
-                    "elapsedTime": datetime.utcfromtimestamp(start_ms / 1000).strftime('%H:%M:%S'), # Readable elapsed
+                    "elapsedTime": format_elapsed_time(start_ms),
                     "timestamp": abs_timestamp,
                     "type": "transcript",
                     "message": message,
