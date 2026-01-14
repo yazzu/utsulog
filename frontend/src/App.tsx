@@ -11,7 +11,7 @@ interface Video {
   videoId: string;
   title: string;
   thumbnail_url: string;
-  publishedAt: string;
+  actualStartTime: string;
 }
 
 // APIから返される検索結果の型定義
@@ -26,6 +26,7 @@ interface SearchResult {
   thumbnailUrl: string;
   authorChannelId: string;
   authorIconUrl: string;
+  type?: string;
 }
 
 // elapsedTime (hh:mm:ss) を秒に変換するヘルパー関数

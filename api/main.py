@@ -110,7 +110,7 @@ def get_videos(request: Request):
         },
         "sort": [
             {
-                "publishedAt.keyword": {
+                "actualStartTime.keyword": {
                     "order": "desc"
                 }
             }
@@ -298,6 +298,7 @@ def search_chat_logs(
                 "elapsedTime": source.get("elapsedTime"),
                 "timestampSec": source.get("timestamp"),
                 "message": source.get("message"),
+                "type": source.get("type"),
                 "author": source.get("authorName"),
                 "authorChannelId": source.get("authorChannelId"),
                 "authorIconUrl": author_icon_url,

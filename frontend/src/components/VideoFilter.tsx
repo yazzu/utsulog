@@ -4,7 +4,7 @@ interface Video {
   videoId: string;
   title: string;
   thumbnail_url: string;
-  publishedAt: string;
+  actualStartTime: string;
 }
 
 interface VideoFilterProps {
@@ -15,16 +15,16 @@ interface VideoFilterProps {
   isOpen: boolean;
 }
 
-const formatPublishedAt = (publishedAt: string): string => {
-  if (!publishedAt || publishedAt.length !== 14) {
+const formatActualStartTime = (actualStartTime: string): string => {
+  if (!actualStartTime || actualStartTime.length !== 14) {
     return '';
   }
-  const year = publishedAt.substring(0, 4);
-  const month = publishedAt.substring(4, 6);
-  const day = publishedAt.substring(6, 8);
-  const hour = publishedAt.substring(8, 10);
-  const minute = publishedAt.substring(10, 12);
-  const second = publishedAt.substring(12, 14);
+  const year = actualStartTime.substring(0, 4);
+  const month = actualStartTime.substring(4, 6);
+  const day = actualStartTime.substring(6, 8);
+  const hour = actualStartTime.substring(8, 10);
+  const minute = actualStartTime.substring(10, 12);
+  const second = actualStartTime.substring(12, 14);
   return `${year}/${month}/${day} ${hour}:${minute}:${second}`;
 };
 
@@ -50,9 +50,8 @@ const VideoFilter: React.FC<VideoFilterProps> = ({ videos, selectedVideoId, setS
                   setSelectedVideoId(video.videoId === selectedVideoId ? null : video.videoId);
                   onClose();
                 }}
-                className={`relative rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full ${
-                  selectedVideoId === video.videoId ? 'ring-2 ring-blue-500' : ''
-                }`}
+                className={`relative rounded-md overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full ${selectedVideoId === video.videoId ? 'ring-2 ring-blue-500' : ''
+                  }`}
               >
                 <img src={video.thumbnail_url} alt={video.title} className="w-full h-auto object-cover transition-transform duration-200 hover:scale-105" />
                 {selectedVideoId === video.videoId && (
@@ -63,7 +62,7 @@ const VideoFilter: React.FC<VideoFilterProps> = ({ videos, selectedVideoId, setS
                   </div>
                 )}
               </button>
-              <p className="text-xs text-slate-500 mt-2 text-center">{formatPublishedAt(video.publishedAt)}</p>
+              <p className="text-xs text-slate-500 mt-2 text-center">{formatActualStartTime(video.actualStartTime)}</p>
               <p className="text-xs text-slate-600 mt-1 text-center">{video.title}</p>
             </div>
           ))}
