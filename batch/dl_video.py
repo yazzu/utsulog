@@ -13,7 +13,7 @@ def download_video(video_info, save_dir):
     """
     try:
         video_url = video_info.get("video_url")
-        published_at = video_info.get("publishedAt")
+        published_at = video_info.get("actualStartTime")
         video_id = video_info.get("videoId")
         if not video_id and video_url:
             parsed_url = urlparse(video_url)

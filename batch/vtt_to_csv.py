@@ -7,7 +7,7 @@ from glob import glob
 
 # Environment variables
 VIDEOS_NDJSON_PATH = os.getenv('VIDEOS_NDJSON')
-VIDEOFILES_DIR = os.getenv('VIDEOFILES_DIR')
+SUBTITLES_DIR = os.getenv('SUBTITLES_DIR')
 
 def load_video_metadata(ndjson_path):
     """
@@ -24,13 +24,6 @@ def load_video_metadata(ndjson_path):
                 try:
                     data = json.loads(line)
                     video_id = data.get('video_url', '').split('v=')[-1].split('&')[0]
-                    # Also try to get from thumbnail_url if video_url parsing fails or is insufficient
-                    if not video_id and 'thumbnail_url' in data:
-                         # https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg
-                         match = re.search(r'/vi/([^/]+)/', data['thumbnail_url'])
-                         if match:
-                             video_id = match.group(1)
-                    
                     if video_id:
                         video_metadata[video_id] = data
                 except json.JSONDecodeError:
@@ -119,15 +112,15 @@ def generate_id(video_id, timestamp_ms, message):
     return hashlib.sha1(raw_str.encode('utf-8')).hexdigest()
 
 def main():
-    if not VIDEOFILES_DIR or not os.path.isdir(VIDEOFILES_DIR):
-        print("Error: VIDEOFILES_DIR environment variable is not set or valid.")
+    if not SUBTITLES_DIR or not os.path.isdir(SUBTITLES_DIR):
+        print("Error: SUBTITLES_DIR environment variable is not set or valid.")
         return
 
     video_metadata = load_video_metadata(VIDEOS_NDJSON_PATH)
     
     # Pattern: {datetime}_{videoId}_{title}_fixed.vtt
     # We will iterate all files, but filter by suffix
-    vtt_files = glob(os.path.join(VIDEOFILES_DIR, "*_fixed.vtt"))
+    vtt_files = glob(os.path.join(SUBTITLES_DIR, "*_fixed.vtt"))
     
     print(f"Found {len(vtt_files)} VTT files to process.")
 
@@ -148,7 +141,7 @@ def main():
         # title_from_filename = match.group(3)
 
         output_filename = basename.replace('_fixed.vtt', '_vtt.json')
-        output_path = os.path.join(VIDEOFILES_DIR, output_filename)
+        output_path = os.path.join(SUBTITLES_DIR, output_filename)
         
         if os.path.exists(output_path):
             print(f"Skipping {basename}, output already exists.")
@@ -159,18 +152,18 @@ def main():
         # Get metadata
         meta = video_metadata.get(video_id)
         video_title = meta.get('title', '') if meta else ''
-        published_at_str = meta.get('publishedAt', '') if meta else ''
+        actual_start_time_str = meta.get('actualStartTime', '') if meta else ''
         
         # Convert published_at to unixtime ms
         # Format: 20251130061527 -> YYYYMMDDHHMMSS
-        # If publishedAt is available from valid source (ndjson), use it. 
+        # If actualStartTime is available from valid source (ndjson), use it. 
         # Otherwise fallback to filename date? Filename date is usually download time or publish time.
-        # Step description says: datetime: videos.ndjson.publishedAt + vtt.datetime
+        # Step description says: datetime: videos.ndjson.actualStartTime + vtt.datetime
         
         base_timestamp = 0
-        if published_at_str:
+        if actual_start_time_str:
              try:
-                 dt = datetime.strptime(published_at_str, "%Y%m%d%H%M%S")
+                 dt = datetime.strptime(actual_start_time_str, "%Y%m%d%H%M%S")
                  base_timestamp = int(dt.timestamp() * 1000)
              except ValueError:
                  pass
@@ -188,7 +181,7 @@ def main():
         with open(output_path, 'w', encoding='utf-8') as out_f:
             for start_ms, message in cues:
                 
-                # timestamp = publishedAt + elapsed (start_ms)
+                # timestamp = actualStartTime + elapsed (start_ms)
                 abs_timestamp = base_timestamp + start_ms
                 
                 record = {
@@ -197,6 +190,7 @@ def main():
                     "datetime": datetime.fromtimestamp(abs_timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S'), # This is readable string
                     "elapsedTime": datetime.utcfromtimestamp(start_ms / 1000).strftime('%H:%M:%S'), # Readable elapsed
                     "timestamp": abs_timestamp,
+                    "type": "transcript",
                     "message": message,
                     "authorName": "@Utsuro_himuro",
                     "authorChannelId": "UC64MV1Dfq3prs9CccXg09rQ",

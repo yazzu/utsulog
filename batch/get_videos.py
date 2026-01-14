@@ -85,11 +85,19 @@ def get_video_details(youtube, video_ids):
             published_at_dt = datetime.fromisoformat(published_at_iso.replace('Z', '+00:00'))
             published_at = published_at_dt.strftime('%Y%m%d%H%M%S')
 
+            # 配信開始日時を取得してフォーマット
+            actual_start_time_iso = item['liveStreamingDetails'].get('actualStartTime')
+            actual_start_time = None
+            if actual_start_time_iso:
+                actual_start_time_dt = datetime.fromisoformat(actual_start_time_iso.replace('Z', '+00:00'))
+                actual_start_time = actual_start_time_dt.strftime('%Y%m%d%H%M%S')
+
             video_details.append({
                 'title': title,
                 'video_url': video_url,
                 'thumbnail_url': thumbnail_url,
-                'publishedAt': published_at
+                'publishedAt': published_at,
+                'actualStartTime': actual_start_time
             })
             
     print(f"Got details for {len(video_details)} videos.")

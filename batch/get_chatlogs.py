@@ -68,6 +68,7 @@ def main():
                             "datetime": c.datetime,
                             "elapsedTime": c.elapsedTime,
                             "timestamp": c.timestamp,
+                            "type": "chat",
                             "message": emoji.emojize(c.message, language='alias'),
                             "authorName": c.author.name,
                             "authorChannelId": c.author.channelId,
