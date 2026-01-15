@@ -72,6 +72,7 @@ function App() {
   const [isVideoFilterOpen, setIsVideoFilterOpen] = useState(false);
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [messageType, setMessageType] = useState<'all' | 'chat' | 'transcript'>('all');
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
@@ -140,6 +141,7 @@ function App() {
       from_: (reset ? 0 : from).toString(),
       exact: isExactMatch.toString(),
       sort_order: sortOrder,
+      message_type: messageType,
     });
     if (dateFrom) params.append('date_from', dateFrom);
     if (dateTo) params.append('date_to', dateTo);
@@ -165,7 +167,7 @@ function App() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [from, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder]);
+  }, [from, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder, messageType]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -176,7 +178,7 @@ function App() {
       clearTimeout(handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder]);
+  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder, messageType]);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -341,7 +343,7 @@ function App() {
                 </svg>
               </button>
             </div>
-            <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろの配信チャットのログを検索できるよ。</p>
+            <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろの字幕とチャットを検索できるよ。</p>
             {/* Search Box */}
             <div className="mt-6 relative">
               <input
@@ -403,17 +405,54 @@ function App() {
                 </div>
               )}
             </div>
-            {/* Exact Match Toggle */}
-            <div className="flex justify-end mt-2 mr-4">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  checked={isExactMatch}
-                  onChange={(e) => setIsExactMatch(e.target.checked)}
-                />
-                <span className="text-sm text-slate-600">完全一致で検索</span>
-              </label>
+
+            {/* Control Row: Message Type & Exact Match */}
+            <div className="flex flex-col sm:flex-row justify-between items-center mt-6 px-1 lg:px-0">
+              {/* Message Type Segmented Control */}
+              <div className="flex justify-start w-full sm:w-auto">
+                <div className="bg-slate-200 p-1 rounded-full inline-flex relative shadow-inner w-full sm:w-auto">
+                  {/* Sliding Background */}
+                  <div
+                    className={`absolute top-1 bottom-1 rounded-full bg-white shadow-sm transition-all duration-300 ease-in-out z-10`}
+                    style={{
+                      left: messageType === 'transcript' ? '0.25rem' : messageType === 'all' ? 'calc(33.333% + 0.25rem)' : 'calc(66.666% + 0.25rem)',
+                      width: 'calc(33.333% - 0.5rem)'
+                    }}
+                  />
+
+                  <button
+                    onClick={() => setMessageType('transcript')}
+                    className={`relative z-20 px-3 py-2 text-sm font-medium rounded-full transition-colors duration-200 focus:outline-none flex-1 min-w-[80px] sm:min-w-[100px] text-center ${messageType === 'transcript' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-800'}`}
+                  >
+                    うつろ
+                  </button>
+                  <button
+                    onClick={() => setMessageType('all')}
+                    className={`relative z-20 px-3 py-2 text-sm font-medium rounded-full transition-colors duration-200 focus:outline-none flex-1 min-w-[80px] sm:min-w-[100px] text-center ${messageType === 'all' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-800'}`}
+                  >
+                    すべて
+                  </button>
+                  <button
+                    onClick={() => setMessageType('chat')}
+                    className={`relative z-20 px-3 py-2 text-sm font-medium rounded-full transition-colors duration-200 focus:outline-none flex-1 min-w-[80px] sm:min-w-[100px] text-center ${messageType === 'chat' ? 'text-blue-600' : 'text-slate-600 hover:text-slate-800'}`}
+                  >
+                    チャット
+                  </button>
+                </div>
+              </div>
+
+              {/* Exact Match Toggle */}
+              <div className="flex justify-end mt-4 sm:mt-0 w-full sm:w-auto">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    checked={isExactMatch}
+                    onChange={(e) => setIsExactMatch(e.target.checked)}
+                  />
+                  <span className="text-sm text-slate-600 whitespace-nowrap">完全一致で検索</span>
+                </label>
+              </div>
             </div>
           </header>
 
@@ -445,7 +484,7 @@ function App() {
                 const isChat = result.type === 'chat';
                 return (
                   <div key={result.id} className={`relative group ${isChat ? 'pl-8 sm:pl-16' : 'pr-8 sm:pr-16'}`}>
-                    <div className="relative rounded-lg overflow-hidden">
+                    <div className={`relative ${isChat ? 'rounded-sm' : 'rounded-xl'} overflow-hidden`}>
                       <div className="absolute inset-0 bg-cover bg-center bg-no-repeat filter grayscale" style={{ backgroundImage: `url(${result.thumbnailUrl})` }}></div>
                       <div className={`relative p-5 shadow-md border border-slate-200 hover:shadow-lg hover:border-blue-300 transition-all duration-200 ease-in-out ${isChat ? 'bg-white/95' : 'bg-blue-50/95'}`}>
                         <div className="flex items-center justify-between mb-3">

@@ -19,6 +19,7 @@ origins = [origin.strip() for origin in CORS_ORIGINS.split(',')]
 VIDEOS_INDEX_NAME = os.getenv("VIDEOS_INDEX_NAME")
 CHAT_LOGS_INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME")
 AUTHOR_ICON_BASE_URL = os.getenv("AUTHOR_ICON_BASE_URL") 
+SEARCH_TOTAL_HITS = os.getenv("SEARCH_TOTAL_HITS")
 
 from mangum import Mangum
 
@@ -165,6 +166,7 @@ def search_chat_logs(
     date_to: Optional[str] = None,
     author_name: Optional[str] = None,
     video_id: Optional[str] = None,
+    message_type: str = "all",
     sort_order: str = "desc",
     request: Request = None
 ):
@@ -252,6 +254,9 @@ def search_chat_logs(
     if video_id:
         filters.append({"term": {"videoId.keyword": video_id}})
 
+    if message_type and message_type != "all":
+        filters.append({"term": {"type.keyword": message_type}})
+
     # Elasticsearchの検索クエリ全体を構築
     search_query = {
         "from": from_,
@@ -263,7 +268,7 @@ def search_chat_logs(
         },
         "sort": [
             {
-                "datetime.keyword": {
+                "timestamp": {
                     "order": sort_order
                 }
             }
@@ -278,7 +283,7 @@ def search_chat_logs(
             query=search_query["query"],
             sort=search_query["sort"],
             size=search_query["size"],
-            track_total_hits=20000
+            track_total_hits=SEARCH_TOTAL_HITS
         )
         
         # 総ヒット件数を取得

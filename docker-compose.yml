@@ -39,6 +39,7 @@ services:
       - CHAT_LOGS_INDEX_NAME=${CHAT_LOGS_INDEX_NAME}
       - CORS_ORIGINS=${CORS_ORIGINS}
       - AUTHOR_ICON_BASE_URL=${AUTHOR_ICON_BASE_URL}
+      - SEARCH_TOTAL_HITS=${SEARCH_TOTAL_HITS}
     command: uvicorn main:app --host 0.0.0.0 --port ${API_PORT}
     restart: on-failure
     depends_on:
