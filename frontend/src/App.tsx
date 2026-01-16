@@ -215,7 +215,7 @@ function App() {
 
         {/* Date Filter */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-600 uppercase">コメント投稿日</h3>
+          <h3 className="text-sm font-semibold text-slate-600 uppercase">投稿日</h3>
           <div>
             <label htmlFor="date-from" className="block text-sm font-medium text-slate-700 mb-1">From</label>
             <input
@@ -343,7 +343,7 @@ function App() {
                 </svg>
               </button>
             </div>
-            <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろの字幕とチャットを検索できるよ。</p>
+            <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろチャンネルの実況とチャットを検索できるよ。</p>
             {/* Search Box */}
             <div className="mt-6 relative">
               <input
