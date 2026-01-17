@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import VideoFilter from './components/VideoFilter';
 import InquiryModal from './components/InquiryModal';
+import CautionModal from './components/CautionModal';
+import HelpModal from './components/HelpModal';
 
 // APIのベースURLを環境変数から取得
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -73,6 +75,8 @@ function App() {
   const [isInquiryOpen, setIsInquiryOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [messageType, setMessageType] = useState<'all' | 'chat' | 'transcript'>('all');
+  const [isCautionOpen, setIsCautionOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
@@ -85,6 +89,13 @@ function App() {
       .catch(error => {
         console.error("Error fetching emojis:", error);
       });
+
+    // Check if user has seen caution modal
+    const hasSeenCaution = localStorage.getItem('hasSeenCaution');
+    if (!hasSeenCaution) {
+      setIsCautionOpen(true);
+      localStorage.setItem('hasSeenCaution', 'true');
+    }
   }, []);
 
   // Format message with emojis and highlighting
@@ -343,7 +354,29 @@ function App() {
                 </svg>
               </button>
             </div>
-            <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろチャンネルの実況とチャットを検索できるよ。</p>
+            <div className="flex items-start justify-between">
+              <p className="text-slate-600 lg:pl-0">Utsuro CH. 氷室うつろチャンネルの実況とチャットを検索できるよ。</p>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setIsCautionOpen(true)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  title="注意書き"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setIsHelpOpen(true)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                  title="使い方"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
             {/* Search Box */}
             <div className="mt-6 relative">
               <input
@@ -549,6 +582,16 @@ function App() {
       <InquiryModal
         isOpen={isInquiryOpen}
         onClose={() => setIsInquiryOpen(false)}
+      />
+
+      <CautionModal
+        isOpen={isCautionOpen}
+        onClose={() => setIsCautionOpen(false)}
+      />
+
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
       />
     </div>
   );
