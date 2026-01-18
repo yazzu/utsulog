@@ -1,7 +1,7 @@
 
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from googleapiclient.discovery import build
 import boto3
 from botocore.exceptions import NoCredentialsError
@@ -14,6 +14,9 @@ OUTPUT_NDJSON = os.getenv('VIDEOS_NDJSON')
 
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'
+
+# JST timezone definition
+JST = timezone(timedelta(hours=9))
 
 
 def get_all_video_ids_from_channel(youtube, channel_id):
@@ -80,17 +83,17 @@ def get_video_details(youtube, video_ids):
             # サムネイルURLを取得（高解像度を優先）
             thumbnail_url = item['snippet']['thumbnails'].get('high', {}).get('url')
             
-            # 投稿日を取得してフォーマット
+            # 投稿日を取得してフォーマット (JST)
             published_at_iso = item['snippet']['publishedAt']
             published_at_dt = datetime.fromisoformat(published_at_iso.replace('Z', '+00:00'))
-            published_at = published_at_dt.strftime('%Y%m%d%H%M%S')
+            published_at = published_at_dt.astimezone(JST).strftime('%Y%m%d%H%M%S')
 
-            # 配信開始日時を取得してフォーマット
+            # 配信開始日時を取得してフォーマット (JST)
             actual_start_time_iso = item['liveStreamingDetails'].get('actualStartTime')
             actual_start_time = None
             if actual_start_time_iso:
                 actual_start_time_dt = datetime.fromisoformat(actual_start_time_iso.replace('Z', '+00:00'))
-                actual_start_time = actual_start_time_dt.strftime('%Y%m%d%H%M%S')
+                actual_start_time = actual_start_time_dt.astimezone(JST).strftime('%Y%m%d%H%M%S')
 
             video_details.append({
                 'title': title,

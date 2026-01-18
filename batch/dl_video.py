@@ -13,7 +13,7 @@ def download_video(video_info, save_dir):
     """
     try:
         video_url = video_info.get("video_url")
-        published_at = video_info.get("actualStartTime")
+        actual_start_time = video_info.get("actualStartTime")
         video_id = video_info.get("videoId")
         if not video_id and video_url:
             parsed_url = urlparse(video_url)
@@ -21,13 +21,13 @@ def download_video(video_info, save_dir):
             video_id = query_params.get('v', [None])[0]
         title = video_info.get("title")
 
-        if not all([video_url, published_at, video_id, title]):
+        if not all([video_url, actual_start_time, video_id, title]):
             print(f"Skipping due to missing data: {video_info}")
             return
 
         # ファイル名をサニタイズし、パスを構築
         sanitized_title = sanitize_filename(title)
-        file_name = f"{published_at}_[{video_id}]_{sanitized_title}.mp4"
+        file_name = f"{actual_start_time}_[{video_id}]_{sanitized_title}.mp4"
         save_path = os.path.join(save_dir, file_name)
 
         # ファイルが既に存在する場合はスキップ
