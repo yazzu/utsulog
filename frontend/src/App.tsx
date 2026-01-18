@@ -21,6 +21,7 @@ interface SearchResult {
   id: string;
   videoId: string;
   datetime: string;
+  timestampSec: number;
   elapsedTime: string;
   author: string;
   message: string;
@@ -49,6 +50,19 @@ const elapsedTimeSeconds = (elapsedTime: string): number => {
 const formatTimestamp = (elapsedTime: string): string => {
   return elapsedTime;
 };
+
+// timestamp (ms) を yyyy-mm-dd HH:MM:SS 形式に変換するヘルパー関数
+const formatDate = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const HH = String(date.getHours()).padStart(2, '0');
+  const MM = String(date.getMinutes()).padStart(2, '0');
+  const SS = String(date.getSeconds()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${HH}:${MM}:${SS}`;
+};
+
 
 // Vite specific: Import all custom emojis from the public directory
 const emojiModules = import.meta.glob('/public/custom_emojis/*.png', { eager: true });
@@ -533,7 +547,7 @@ function App() {
                             <div>
                               <p className="font-semibold text-slate-800">{result.author}</p>
                               <p className="text-sm text-slate-500">動画: 「{result.videoTitle}」</p>
-                              <p className="text-sm text-slate-500">投稿日: {result.datetime}</p>
+                              <p className="text-sm text-slate-500">投稿日: {formatDate(result.timestampSec)}</p>
                             </div>
                           </div>
                           <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
