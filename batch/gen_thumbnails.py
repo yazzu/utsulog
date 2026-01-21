@@ -133,14 +133,16 @@ def main():
             output_pattern = os.path.join(temp_dir, "image_%d.jpg")
             command = [
                 "ffmpeg",
+                "-nostdin",
+                "-y",
                 "-i", video_file,
                 "-vf", "fps=1/180:round=up",
                 "-q:v", "2", 
                 output_pattern
             ]
             
-            # print(f"  Running ffmpeg extraction...")
-            subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"  Running ffmpeg extraction...")
+            subprocess.run(command, check=True)
             
             # Process generated images
             generated_files = sorted(glob.glob(os.path.join(temp_dir, "image_*.jpg")))
@@ -167,12 +169,13 @@ def main():
                 
                 convert_command = [
                     "ffmpeg",
+                    "-nostdin",
                     "-y", # Overwrite output files without asking
                     "-i", file_path,
                     "-q:v", "75", # WebP quality
                     new_path
                 ]
-                subprocess.run(convert_command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(convert_command, check=True)
             
             print(f"  Thumbnails generated.")
             

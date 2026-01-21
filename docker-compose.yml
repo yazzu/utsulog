@@ -51,8 +51,8 @@ services:
       - "${FRONTEND_PORT}:${FRONTEND_PORT}"
     volumes:
       - ./frontend:/app
-      - /mnt/f/Dev/utsulog/thumbnails:/app/thumbnails
-      - /mnt/f/Dev/utsulog/author-icons:/app/author-icons
+      - ${UTSULOG_DATA}/thumbnails:/app/thumbnails
+      - ${UTSULOG_DATA}/author-icons:/app/author-icons
     command: npm run dev
 
   batch:
@@ -62,12 +62,12 @@ services:
     volumes:
       - .:/app
       - ./miniutsuro_es_ca.crt:/app/miniutsuro_es_ca.crt # Elasticsearch CA証明書
-      - /mnt/f/Dev/utsulog/videos:/app/videos # 動画リストNDJSON保存用
-      - /mnt/f/Dev/utsulog/audios:/app/audios # 音声ファイル保存用
-      - /mnt/f/Dev/utsulog/chat_logs:/app/chat_logs # チャットログ保存用
-      - /mnt/f/Dev/utsulog/thumbnails:/app/thumbnails # サムネイル保存用
-      - /mnt/f/Dev/utsulog/videofiles:/app/videofiles # 動画ファイル一覧
-      - /mnt/f/Dev/utsulog/author-icons:/app/author-icons # 動画ファイル一覧
+      - ${UTSULOG_DATA}/videos:/app/videos # 動画リストNDJSON保存用
+      - ${UTSULOG_DATA}/audios:/app/audios # 音声ファイル保存用
+      - ${UTSULOG_DATA}/chat_logs:/app/chat_logs # チャットログ保存用
+      - ${UTSULOG_DATA}/thumbnails:/app/thumbnails # サムネイル保存用
+      - ${UTSULOG_DATA}/videofiles:/app/videofiles # 動画ファイル一覧
+      - ${UTSULOG_DATA}/author-icons:/app/author-icons # 動画ファイル一覧
       - /home/y_saito_/utsulog-st/vtt_fix:/app/subtitles # 字幕ファイル保存用
     environment:
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
@@ -90,8 +90,8 @@ services:
       - S3_AUTHOR_ICON_BUCKET_NAME=${S3_AUTHOR_ICON_BUCKET_NAME} # S3 Author Icon Bucket Name
       - AUTHOR_ICONS_DIR=/app/author-icons # Author Icons Directory
       - ELASTICSEARCH_CA=${ELASTICSEARCH_CA} # Elasticsearch CA証明書ファイル名
-    depends_on:
-      - elasticsearch
+    extra_hosts:
+      - "miniutsuro:host-gateway"
 
 volumes:
   esdata:

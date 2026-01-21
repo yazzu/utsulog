@@ -1,1 +1,2 @@
-docker compose --env-file .env run --rm batch bash batch/run_batch.sh
+#!/bin/bash
+docker compose run --rm --no-deps batch bash batch/run_batch.sh

@@ -18,7 +18,7 @@ echo "Running dl_video.py..."
 python batch/dl_video.py
 echo "Running gen_thumbnails.py..."
 python batch/gen_thumbnails.py
-echo "Waiting 3 seconds for index refresh..."
+echo "Waiting 5 seconds for index refresh..."
 sleep 5
 echo "Running upload_thumbnails.py..."
 python batch/upload_thumbnails.py
