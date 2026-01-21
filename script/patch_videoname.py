@@ -13,15 +13,7 @@ def load_video_data(ndjson_path):
             for line in f:
                 try:
                     data = json.loads(line)
-                    # Use existing fields. Note: get_videos.py saves keys as:
-                    # 'title', 'video_url', 'thumbnail_url', 'publishedAt', 'actualStartTime'
-                    # checking video_url for ID if not explicitly stored (though get_videos does not seem to save video_id explicitly in the dict based on my read, wait, let me re-check get_videos.py content)
-                    
-                    # Re-reading get_videos.py content from memory:
-                    # video_details.append({ ... 'video_url': video_url ... })
-                    # It does NOT save 'video_id' explicitly as a top level key in the dict output in write_to_ndjson.
-                    # But video_url has it.
-                    
+                    # Extract video_id from video_url since it's not stored explicitly as a key
                     video_url = data.get('video_url')
                     if video_url:
                         # Simple extraction assuming standard format
