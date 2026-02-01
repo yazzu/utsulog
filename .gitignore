@@ -65,5 +65,5 @@ route53-change.json
 instraction_log.md
 deploy_ecr_api.sh
 miniutsuro_es_ca.crt
-batch/test/*
+test/*
 deploy_frontend_staging.sh
