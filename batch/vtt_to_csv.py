@@ -8,6 +8,7 @@ from glob import glob
 # Environment variables
 VIDEOS_NDJSON_PATH = os.getenv('VIDEOS_NDJSON')
 SUBTITLES_DIR = os.getenv('SUBTITLES_DIR')
+LOCAL_CHAT_LOGS_DIR = os.getenv('LOCAL_CHAT_LOGS_DIR')
 
 def load_video_metadata(ndjson_path):
     """
@@ -128,6 +129,13 @@ def main():
     if not SUBTITLES_DIR or not os.path.isdir(SUBTITLES_DIR):
         print("Error: SUBTITLES_DIR environment variable is not set or valid.")
         return
+    
+    if not LOCAL_CHAT_LOGS_DIR:
+        print("Error: LOCAL_CHAT_LOGS_DIR environment variable is not set.")
+        return
+    
+    output_dir = os.path.join(LOCAL_CHAT_LOGS_DIR, "chat_logs")
+    os.makedirs(output_dir, exist_ok=True)
 
     video_metadata = load_video_metadata(VIDEOS_NDJSON_PATH)
     
@@ -154,7 +162,7 @@ def main():
         # title_from_filename = match.group(3)
 
         output_filename = basename.replace('_fixed.vtt', '_vtt.json')
-        output_path = os.path.join(SUBTITLES_DIR, output_filename)
+        output_path = os.path.join(output_dir, output_filename)
         
         if os.path.exists(output_path):
             print(f"Skipping {basename}, output already exists.")
