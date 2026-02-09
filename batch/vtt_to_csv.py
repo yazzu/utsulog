@@ -2,7 +2,7 @@ import os
 import json
 import re
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from glob import glob
 
 # Environment variables
@@ -137,6 +137,8 @@ def main():
     output_dir = os.path.join(LOCAL_CHAT_LOGS_DIR, "chat_logs")
     os.makedirs(output_dir, exist_ok=True)
 
+    processed_dir = os.path.join(LOCAL_CHAT_LOGS_DIR, "chat_logs_processed")
+
     video_metadata = load_video_metadata(VIDEOS_NDJSON_PATH)
     
     # Pattern: {datetime}_{videoId}_{title}_fixed.vtt
@@ -163,8 +165,9 @@ def main():
 
         output_filename = basename.replace('_fixed.vtt', '_vtt.json')
         output_path = os.path.join(output_dir, output_filename)
-        
-        if os.path.exists(output_path):
+
+        processed_path = os.path.join(processed_dir, output_filename)
+        if os.path.exists(processed_path):
             print(f"Skipping {basename}, output already exists.")
             continue
             
@@ -175,16 +178,20 @@ def main():
         video_title = meta.get('title', '') if meta else ''
         actual_start_time_str = meta.get('actualStartTime', '') if meta else ''
         
-        # Convert published_at to unixtime ms
+        # Convert actual_start_time_str to unixtime ms
         # Format: 20251130061527 -> YYYYMMDDHHMMSS
         # If actualStartTime is available from valid source (ndjson), use it. 
         # Otherwise fallback to filename date? Filename date is usually download time or publish time.
         # Step description says: datetime: videos.ndjson.actualStartTime + vtt.datetime
         
         base_timestamp = 0
+        # JST timezone (UTC+9)
+        jst = timezone(timedelta(hours=9))
+        
         if actual_start_time_str:
              try:
                  dt = datetime.strptime(actual_start_time_str, "%Y%m%d%H%M%S")
+                 dt = dt.replace(tzinfo=jst)  # Interpret as JST
                  base_timestamp = int(dt.timestamp() * 1000)
              except ValueError:
                  pass
@@ -193,6 +200,7 @@ def main():
              # Fallback to filename datetime
              try:
                  dt = datetime.strptime(file_datetime_str, "%Y%m%d%H%M%S")
+                 dt = dt.replace(tzinfo=jst)  # Interpret as JST
                  base_timestamp = int(dt.timestamp() * 1000)
              except ValueError:
                  pass
