@@ -12,37 +12,37 @@ ECR_REPO_NAME="utsulog-api"
 IMAGE_TAG="staging"
 IMAGE_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}"
 LAMBDA_FUNCTION_NAME="utsulog-api-staging"
-ENV_FILE=".env.prod"
+ENV_FILE=".env.staging"
 
-# .envファイルから環境変数を読み込む関数
-# コメントや空行を無視して、KEY=VALUE形式で変数を読み込む
-load_env_vars() {
+# .envファイルからJSON形式の環境変数ペイロードを組み立てる関数。
+# AWS CLIのshorthand構文(Variables={KEY=VALUE,...})は値自体にカンマを含む
+# CORS_ORIGINS(複数オリジンをカンマ区切り)のようなケースをパースできないため、
+# JSON形式で渡す。
+load_env_vars_json() {
     local env_file=$1
-    local env_vars=""
-    while IFS='=' read -r key value || [ -n "$key" ]; do
-        # コメント(#)で始まる行と空行をスキップ
-        if [[ $key =~ ^# ]] || [[ -z $key ]]; then
-            continue
-        fi
-        # 行末のコメントを削除等は簡易的な処理では行わないが、.env.prodの形式に合わせる
-        # 値の前後の空白や引用符の除去が必要な場合は適宜追加
-        # ここでは単純に KEY=VALUE を Variables={KEY=VALUE,...} の形式に整形するための準備
-        
-        # Lambdaの予約済み環境変数をスキップ
-        if [[ "$key" == "AWS_ACCESS_KEY_ID" ]] || [[ "$key" == "AWS_SECRET_ACCESS_KEY" ]] || [[ "$key" == "AWS_DEFAULT_REGION" ]]; then
-            continue
-        fi
+    python3 - "$env_file" <<'PYEOF'
+import json
+import sys
 
-        if [ -n "$value" ]; then
-            env_vars="${env_vars}${key}=${value},"
-        fi
-    done < "$env_file"
-    # 最後のカンマを削除
-    echo "${env_vars%,}"
+env_file = sys.argv[1]
+skip_keys = {"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_DEFAULT_REGION"}
+variables = {}
+with open(env_file) as f:
+    for line in f:
+        line = line.rstrip("\n")
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        if key in skip_keys or not value:
+            continue
+        variables[key] = value
+
+print(json.dumps({"Variables": variables}))
+PYEOF
 }
 
 echo "Loading environment variables from ${ENV_FILE}..."
-ENV_VARS=$(load_env_vars "${ENV_FILE}")
+ENV_JSON=$(load_env_vars_json "${ENV_FILE}")
 
 echo "Logging in to ECR..."
 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
@@ -71,7 +71,7 @@ if aws lambda get-function --function-name ${LAMBDA_FUNCTION_NAME} >/dev/null 2>
     echo "Updating environment variables..."
     aws lambda update-function-configuration \
         --function-name ${LAMBDA_FUNCTION_NAME} \
-        --environment "Variables={${ENV_VARS}}"
+        --environment "${ENV_JSON}"
 
 else
     echo "Creating new Staging Lambda function..."
@@ -91,7 +91,7 @@ else
         --role ${ROLE_ARN} \
         --timeout 30 \
         --memory-size 512 \
-        --environment "Variables={${ENV_VARS}}"
+        --environment "${ENV_JSON}"
 
     echo "Creating Function URL..."
     aws lambda create-function-url-config \
