@@ -329,12 +329,12 @@ function App() {
           <h3 className="text-sm font-semibold text-slate-600 uppercase">投稿日時</h3>
           <div>
             <label htmlFor="date-from" className="block text-sm font-medium text-slate-700 mb-1">From</label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               <input
                 type="date"
                 id="date-from"
                 name="date-from"
-                className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
               />
@@ -342,7 +342,7 @@ function App() {
                 type="time"
                 id="time-from"
                 name="time-from"
-                className="w-28 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 value={timeFrom}
                 onChange={(e) => setTimeFrom(e.target.value)}
               />
@@ -350,12 +350,12 @@ function App() {
           </div>
           <div>
             <label htmlFor="date-to" className="block text-sm font-medium text-slate-700 mb-1">To</label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
               <input
                 type="date"
                 id="date-to"
                 name="date-to"
-                className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
               />
@@ -363,7 +363,7 @@ function App() {
                 type="time"
                 id="time-to"
                 name="time-to"
-                className="w-28 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 value={timeTo}
                 onChange={(e) => setTimeTo(e.target.value)}
               />
