@@ -4,6 +4,7 @@ import VideoFilter from './components/VideoFilter';
 import InquiryModal from './components/InquiryModal';
 import CautionModal from './components/CautionModal';
 import HelpModal from './components/HelpModal';
+import { combineDateTime } from './lib/datetimeRange';
 
 // APIのベースURLを環境変数から取得
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -80,6 +81,8 @@ function App() {
   const [totalResults, setTotalResults] = useState(0);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [timeFrom, setTimeFrom] = useState('');
+  const [timeTo, setTimeTo] = useState('');
   const [authorName, setAuthorName] = useState('');
   const [customEmojis, setCustomEmojis] = useState<string[]>([]);
   const [emojiMap, setEmojiMap] = useState<Record<string, string>>({});
@@ -91,6 +94,7 @@ function App() {
   const [messageType, setMessageType] = useState<'all' | 'chat' | 'transcript'>('all');
   const [isCautionOpen, setIsCautionOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const hasActiveDateRange = Boolean(dateFrom && dateTo);
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
@@ -146,7 +150,7 @@ function App() {
 
   // デバウンスされたAPIリクエスト
   const debouncedSearch = useCallback((query: string, reset: boolean = false) => {
-    if (query.trim() === '' && authorName.trim() === '' && !selectedVideoId) {
+    if (query.trim() === '' && authorName.trim() === '' && !selectedVideoId && !hasActiveDateRange) {
       setSearchResults([]);
       setFrom(0);
       setHasMore(true);
@@ -168,8 +172,10 @@ function App() {
       sort_order: sortOrder,
       message_type: messageType,
     });
-    if (dateFrom) params.append('date_from', dateFrom);
-    if (dateTo) params.append('date_to', dateTo);
+    const dateFromParam = combineDateTime(dateFrom, timeFrom, 'from');
+    const dateToParam = combineDateTime(dateTo, timeTo, 'to');
+    if (dateFromParam) params.append('date_from', dateFromParam);
+    if (dateToParam) params.append('date_to', dateToParam);
     if (authorName) params.append('author_name', authorName);
     if (selectedVideoId) params.append('video_id', selectedVideoId);
 
@@ -192,7 +198,7 @@ function App() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [from, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder, messageType]);
+  }, [from, isExactMatch, dateFrom, dateTo, timeFrom, timeTo, hasActiveDateRange, authorName, selectedVideoId, sortOrder, messageType]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -203,7 +209,7 @@ function App() {
       clearTimeout(handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder, messageType]);
+  }, [searchQuery, isExactMatch, dateFrom, dateTo, timeFrom, timeTo, authorName, selectedVideoId, sortOrder, messageType]);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -240,28 +246,48 @@ function App() {
 
         {/* Date Filter */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-600 uppercase">投稿日</h3>
+          <h3 className="text-sm font-semibold text-slate-600 uppercase">投稿日時</h3>
           <div>
             <label htmlFor="date-from" className="block text-sm font-medium text-slate-700 mb-1">From</label>
-            <input
-              type="date"
-              id="date-from"
-              name="date-from"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <input
+                type="date"
+                id="date-from"
+                name="date-from"
+                className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <input
+                type="time"
+                id="time-from"
+                name="time-from"
+                className="w-28 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={timeFrom}
+                onChange={(e) => setTimeFrom(e.target.value)}
+              />
+            </div>
           </div>
           <div>
             <label htmlFor="date-to" className="block text-sm font-medium text-slate-700 mb-1">To</label>
-            <input
-              type="date"
-              id="date-to"
-              name="date-to"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <input
+                type="date"
+                id="date-to"
+                name="date-to"
+                className="flex-1 min-w-0 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+              <input
+                type="time"
+                id="time-to"
+                name="time-to"
+                className="w-28 px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={timeTo}
+                onChange={(e) => setTimeTo(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -576,7 +602,7 @@ function App() {
               })
             ) : (
               <div className="text-center py-12 text-slate-500">
-                {isLoading ? '検索中...' : (searchQuery || authorName || selectedVideoId ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。')}
+                {isLoading ? '検索中...' : (searchQuery || authorName || selectedVideoId || hasActiveDateRange ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。')}
               </div>
             )}
             {isLoading && <div className="text-center py-4">読み込み中...</div>}
