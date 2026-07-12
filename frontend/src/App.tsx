@@ -33,6 +33,19 @@ interface SearchResult {
   type?: string;
 }
 
+// 「前後5分を表示」実行前の検索条件を保持するためのスナップショット
+interface SearchFiltersSnapshot {
+  searchQuery: string;
+  dateFrom: string;
+  timeFrom: string;
+  dateTo: string;
+  timeTo: string;
+  authorName: string;
+  selectedVideoId: string | null;
+  messageType: 'all' | 'chat' | 'transcript';
+  sortOrder: 'asc' | 'desc';
+}
+
 // elapsedTime (hh:mm:ss) を秒に変換するヘルパー関数
 const elapsedTimeSeconds = (elapsedTime: string): number => {
   const parts = elapsedTime.split(':').map(Number);
@@ -64,6 +77,29 @@ const formatDate = (timestamp: number): string => {
   return `${yyyy}-${mm}-${dd} ${HH}:${MM}:${SS}`;
 };
 
+// timestamp (ms) を date input用の yyyy-mm-dd 形式に変換するヘルパー関数
+const formatDateInputValue = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+// timestamp (ms) を time input用の HH:MM 形式に変換するヘルパー関数
+const formatTimeInputValue = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const HH = String(date.getHours()).padStart(2, '0');
+  const MM = String(date.getMinutes()).padStart(2, '0');
+  return `${HH}:${MM}`;
+};
+
+// date input(yyyy-mm-dd)とtime input(HH:MM)を「MM/DD HH:MM」表示用にまとめるヘルパー関数
+const formatRangeLabel = (date: string, time: string): string => {
+  if (!date) return '';
+  const [, month, day] = date.split('-');
+  return time ? `${month}/${day} ${time}` : `${month}/${day}`;
+};
 
 // Vite specific: Import all custom emojis from the public directory
 const emojiModules = import.meta.glob('/public/custom_emojis/*.png', { eager: true });
@@ -95,6 +131,7 @@ function App() {
   const [isCautionOpen, setIsCautionOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const hasActiveDateRange = Boolean(dateFrom && dateTo);
+  const [filterSnapshot, setFilterSnapshot] = useState<SearchFiltersSnapshot | null>(null);
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
@@ -230,6 +267,48 @@ function App() {
       mainElement.removeEventListener('scroll', handleScroll);
     };
   }, [isLoading, hasMore, searchQuery, debouncedSearch]);
+
+  const showContextAround = (result: SearchResult) => {
+    setFilterSnapshot({
+      searchQuery,
+      dateFrom,
+      timeFrom,
+      dateTo,
+      timeTo,
+      authorName,
+      selectedVideoId,
+      messageType,
+      sortOrder,
+    });
+
+    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+    const windowStart = result.timestampSec - FIVE_MINUTES_MS;
+    const windowEnd = result.timestampSec + FIVE_MINUTES_MS;
+
+    setSearchQuery('');
+    setAuthorName('');
+    setMessageType('all');
+    setSelectedVideoId(result.videoId);
+    setDateFrom(formatDateInputValue(windowStart));
+    setTimeFrom(formatTimeInputValue(windowStart));
+    setDateTo(formatDateInputValue(windowEnd));
+    setTimeTo(formatTimeInputValue(windowEnd));
+    setSortOrder('asc');
+  };
+
+  const restoreSnapshot = () => {
+    if (!filterSnapshot) return;
+    setSearchQuery(filterSnapshot.searchQuery);
+    setDateFrom(filterSnapshot.dateFrom);
+    setTimeFrom(filterSnapshot.timeFrom);
+    setDateTo(filterSnapshot.dateTo);
+    setTimeTo(filterSnapshot.timeTo);
+    setAuthorName(filterSnapshot.authorName);
+    setSelectedVideoId(filterSnapshot.selectedVideoId);
+    setMessageType(filterSnapshot.messageType);
+    setSortOrder(filterSnapshot.sortOrder);
+    setFilterSnapshot(null);
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -529,6 +608,20 @@ function App() {
             </div>
           </header>
 
+          {filterSnapshot && (
+            <div className="sticky top-0 z-10 mb-4 px-4 py-3 bg-blue-50/95 border border-blue-200 rounded-md flex items-center justify-between gap-4">
+              <p className="text-sm text-blue-800">
+                期間表示中: {formatRangeLabel(dateFrom, timeFrom)} 〜 {formatRangeLabel(dateTo, timeTo)}
+              </p>
+              <button
+                onClick={restoreSnapshot}
+                className="text-sm font-medium text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
+              >
+                元の検索に戻る
+              </button>
+            </div>
+          )}
+
           {/* Search Results */}
           <section className="space-y-4">
             <div className="flex justify-between items-center">
@@ -576,9 +669,21 @@ function App() {
                               <p className="text-sm text-slate-500">投稿日: {formatDate(result.timestampSec)}</p>
                             </div>
                           </div>
-                          <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                            {formatTimestamp(result.elapsedTime)}
-                          </span>
+                          <div className="flex flex-col items-center space-y-1">
+                            <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                              {formatTimestamp(result.elapsedTime)}
+                            </span>
+                            <button
+                              onClick={() => showContextAround(result)}
+                              className="text-slate-400 hover:text-blue-600 transition-colors"
+                              title="前後5分を表示"
+                              aria-label="前後5分を表示"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                         <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatMessage(result.message, searchQuery) }} />
                       </div>
