@@ -269,7 +269,8 @@ function App() {
   }, [isLoading, hasMore, searchQuery, debouncedSearch]);
 
   const showContextAround = (result: SearchResult) => {
-    setFilterSnapshot({
+    // 既にピリオドモード中の場合は元の検索条件を上書きしない（連続タップ対応）
+    setFilterSnapshot(prev => prev ?? {
       searchQuery,
       dateFrom,
       timeFrom,

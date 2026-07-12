@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from elasticsearch import Elasticsearch
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse, parse_qs
 
 # 環境変数からElasticsearchのホストを取得
@@ -13,6 +13,8 @@ ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 CF_CLIENT_ID = os.getenv("CF_CLIENT_ID")
 CF_CLIENT_SECRET = os.getenv("CF_CLIENT_SECRET")
 THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL")
+# タイムゾーンを持たない日時文字列はJST(Asia/Tokyo)として解釈する（batch/vtt_to_csv.pyと同じ規約）
+JST = timezone(timedelta(hours=9))
 # 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
 CORS_ORIGINS = os.getenv("CORS_ORIGINS")
 origins = [origin.strip() for origin in CORS_ORIGINS.split(',')]
@@ -82,12 +84,17 @@ def build_datetime_range_filters(date_from: Optional[str], date_to: Optional[str
     """
     date_from/date_toは常に完全なISO日時文字列(例 "2026-07-10T22:00:00")として渡される前提。
     date_from -> gte、date_to -> lte（そのまま、日単位の補正は行わない）。
+    オフセットを持たない日時文字列は、サーバーのシステムタイムゾーンではなく
+    JST(Asia/Tokyo)として解釈する（フロントエンドはブラウザのローカル時刻の
+    数値をそのまま送ってくるため。batch/vtt_to_csv.pyと同じ規約）。
     パースに失敗した値は無視する。
     """
     filters: List[Dict[str, Any]] = []
     if date_from:
         try:
             dt_from = datetime.fromisoformat(date_from)
+            if dt_from.tzinfo is None:
+                dt_from = dt_from.replace(tzinfo=JST)
             ts_from = int(dt_from.timestamp() * 1000)
             filters.append({"range": {"timestamp": {"gte": ts_from}}})
         except ValueError:
@@ -95,6 +102,8 @@ def build_datetime_range_filters(date_from: Optional[str], date_to: Optional[str
     if date_to:
         try:
             dt_to = datetime.fromisoformat(date_to)
+            if dt_to.tzinfo is None:
+                dt_to = dt_to.replace(tzinfo=JST)
             ts_to = int(dt_to.timestamp() * 1000)
             filters.append({"range": {"timestamp": {"lte": ts_to}}})
         except ValueError:
