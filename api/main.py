@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from elasticsearch import Elasticsearch
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse, parse_qs
 
 # 環境変数からElasticsearchのホストを取得
@@ -13,6 +13,8 @@ ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 CF_CLIENT_ID = os.getenv("CF_CLIENT_ID")
 CF_CLIENT_SECRET = os.getenv("CF_CLIENT_SECRET")
 THUMBNAIL_BASE_URL = os.getenv("THUMBNAIL_BASE_URL")
+# タイムゾーンを持たない日時文字列はJST(Asia/Tokyo)として解釈する（batch/vtt_to_csv.pyと同じ規約）
+JST = timezone(timedelta(hours=9))
 # 環境変数からCORSのオリジンリストを取得。カンマ区切りで複数指定可能。
 CORS_ORIGINS = os.getenv("CORS_ORIGINS")
 origins = [origin.strip() for origin in CORS_ORIGINS.split(',')]
@@ -77,6 +79,36 @@ def calculate_author_icon_url(author_channel_id: str) -> str:
     if not author_channel_id:
         return ""
     return f"{AUTHOR_ICON_BASE_URL}/{author_channel_id}.webp"
+
+def build_datetime_range_filters(date_from: Optional[str], date_to: Optional[str]) -> List[Dict[str, Any]]:
+    """
+    date_from/date_toは常に完全なISO日時文字列(例 "2026-07-10T22:00:00")として渡される前提。
+    date_from -> gte、date_to -> lte（そのまま、日単位の補正は行わない）。
+    オフセットを持たない日時文字列は、サーバーのシステムタイムゾーンではなく
+    JST(Asia/Tokyo)として解釈する（フロントエンドはブラウザのローカル時刻の
+    数値をそのまま送ってくるため。batch/vtt_to_csv.pyと同じ規約）。
+    パースに失敗した値は無視する。
+    """
+    filters: List[Dict[str, Any]] = []
+    if date_from:
+        try:
+            dt_from = datetime.fromisoformat(date_from)
+            if dt_from.tzinfo is None:
+                dt_from = dt_from.replace(tzinfo=JST)
+            ts_from = int(dt_from.timestamp() * 1000)
+            filters.append({"range": {"timestamp": {"gte": ts_from}}})
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.fromisoformat(date_to)
+            if dt_to.tzinfo is None:
+                dt_to = dt_to.replace(tzinfo=JST)
+            ts_to = int(dt_to.timestamp() * 1000)
+            filters.append({"range": {"timestamp": {"lte": ts_to}}})
+        except ValueError:
+            pass
+    return filters
 
 @app.on_event("startup")
 async def startup_event():
@@ -196,22 +228,7 @@ def search_chat_logs(
             })
 
     # フィルターの部分
-    filters = []
-    if date_from:
-        try:
-            dt_from = datetime.fromisoformat(date_from)
-            ts_from = int(dt_from.timestamp() * 1000)
-            filters.append({"range": {"timestamp": {"gte": ts_from}}})
-        except ValueError:
-            pass # 不正な日付形式は無視
-    if date_to:
-        try:
-            # 指定日の終わりまで含めるため、次の日の0時より小さい範囲を指定
-            dt_to = datetime.fromisoformat(date_to) + timedelta(days=1)
-            ts_to = int(dt_to.timestamp() * 1000)
-            filters.append({"range": {"timestamp": {"lt": ts_to}}})
-        except ValueError:
-            pass # 不正な日付形式は無視
+    filters = build_datetime_range_filters(date_from, date_to)
 
     if author_name:
         # author_nameからauthorChannelIdを特定するためのAggregationクエリ

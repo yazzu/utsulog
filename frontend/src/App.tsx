@@ -4,6 +4,7 @@ import VideoFilter from './components/VideoFilter';
 import InquiryModal from './components/InquiryModal';
 import CautionModal from './components/CautionModal';
 import HelpModal from './components/HelpModal';
+import { combineDateTime } from './lib/datetimeRange';
 
 // APIのベースURLを環境変数から取得
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -30,6 +31,19 @@ interface SearchResult {
   authorChannelId: string;
   authorIconUrl: string;
   type?: string;
+}
+
+// 「前後5分を表示」実行前の検索条件を保持するためのスナップショット
+interface SearchFiltersSnapshot {
+  searchQuery: string;
+  dateFrom: string;
+  timeFrom: string;
+  dateTo: string;
+  timeTo: string;
+  authorName: string;
+  selectedVideoId: string | null;
+  messageType: 'all' | 'chat' | 'transcript';
+  sortOrder: 'asc' | 'desc';
 }
 
 // elapsedTime (hh:mm:ss) を秒に変換するヘルパー関数
@@ -63,6 +77,29 @@ const formatDate = (timestamp: number): string => {
   return `${yyyy}-${mm}-${dd} ${HH}:${MM}:${SS}`;
 };
 
+// timestamp (ms) を date input用の yyyy-mm-dd 形式に変換するヘルパー関数
+const formatDateInputValue = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+// timestamp (ms) を time input用の HH:MM 形式に変換するヘルパー関数
+const formatTimeInputValue = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const HH = String(date.getHours()).padStart(2, '0');
+  const MM = String(date.getMinutes()).padStart(2, '0');
+  return `${HH}:${MM}`;
+};
+
+// date input(yyyy-mm-dd)とtime input(HH:MM)を「MM/DD HH:MM」表示用にまとめるヘルパー関数
+const formatRangeLabel = (date: string, time: string): string => {
+  if (!date) return '';
+  const [, month, day] = date.split('-');
+  return time ? `${month}/${day} ${time}` : `${month}/${day}`;
+};
 
 // Vite specific: Import all custom emojis from the public directory
 const emojiModules = import.meta.glob('/public/custom_emojis/*.png', { eager: true });
@@ -80,6 +117,8 @@ function App() {
   const [totalResults, setTotalResults] = useState(0);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [timeFrom, setTimeFrom] = useState('');
+  const [timeTo, setTimeTo] = useState('');
   const [authorName, setAuthorName] = useState('');
   const [customEmojis, setCustomEmojis] = useState<string[]>([]);
   const [emojiMap, setEmojiMap] = useState<Record<string, string>>({});
@@ -91,6 +130,8 @@ function App() {
   const [messageType, setMessageType] = useState<'all' | 'chat' | 'transcript'>('all');
   const [isCautionOpen, setIsCautionOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const hasActiveDateRange = Boolean(dateFrom && dateTo);
+  const [filterSnapshot, setFilterSnapshot] = useState<SearchFiltersSnapshot | null>(null);
 
   useEffect(() => {
     setCustomEmojis(emojiFileNames);
@@ -146,7 +187,7 @@ function App() {
 
   // デバウンスされたAPIリクエスト
   const debouncedSearch = useCallback((query: string, reset: boolean = false) => {
-    if (query.trim() === '' && authorName.trim() === '' && !selectedVideoId) {
+    if (query.trim() === '' && authorName.trim() === '' && !selectedVideoId && !hasActiveDateRange) {
       setSearchResults([]);
       setFrom(0);
       setHasMore(true);
@@ -168,8 +209,10 @@ function App() {
       sort_order: sortOrder,
       message_type: messageType,
     });
-    if (dateFrom) params.append('date_from', dateFrom);
-    if (dateTo) params.append('date_to', dateTo);
+    const dateFromParam = combineDateTime(dateFrom, timeFrom, 'from');
+    const dateToParam = combineDateTime(dateTo, timeTo, 'to');
+    if (dateFromParam) params.append('date_from', dateFromParam);
+    if (dateToParam) params.append('date_to', dateToParam);
     if (authorName) params.append('author_name', authorName);
     if (selectedVideoId) params.append('video_id', selectedVideoId);
 
@@ -192,7 +235,7 @@ function App() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [from, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder, messageType]);
+  }, [from, isExactMatch, dateFrom, dateTo, timeFrom, timeTo, hasActiveDateRange, authorName, selectedVideoId, sortOrder, messageType]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -203,7 +246,7 @@ function App() {
       clearTimeout(handler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, isExactMatch, dateFrom, dateTo, authorName, selectedVideoId, sortOrder, messageType]);
+  }, [searchQuery, isExactMatch, dateFrom, dateTo, timeFrom, timeTo, authorName, selectedVideoId, sortOrder, messageType]);
 
   useEffect(() => {
     const mainElement = document.querySelector('main');
@@ -225,6 +268,49 @@ function App() {
     };
   }, [isLoading, hasMore, searchQuery, debouncedSearch]);
 
+  const showContextAround = (result: SearchResult) => {
+    // 既にピリオドモード中の場合は元の検索条件を上書きしない（連続タップ対応）
+    setFilterSnapshot(prev => prev ?? {
+      searchQuery,
+      dateFrom,
+      timeFrom,
+      dateTo,
+      timeTo,
+      authorName,
+      selectedVideoId,
+      messageType,
+      sortOrder,
+    });
+
+    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+    const windowStart = result.timestampSec - FIVE_MINUTES_MS;
+    const windowEnd = result.timestampSec + FIVE_MINUTES_MS;
+
+    setSearchQuery('');
+    setAuthorName('');
+    setMessageType('all');
+    setSelectedVideoId(result.videoId);
+    setDateFrom(formatDateInputValue(windowStart));
+    setTimeFrom(formatTimeInputValue(windowStart));
+    setDateTo(formatDateInputValue(windowEnd));
+    setTimeTo(formatTimeInputValue(windowEnd));
+    setSortOrder('asc');
+  };
+
+  const restoreSnapshot = () => {
+    if (!filterSnapshot) return;
+    setSearchQuery(filterSnapshot.searchQuery);
+    setDateFrom(filterSnapshot.dateFrom);
+    setTimeFrom(filterSnapshot.timeFrom);
+    setDateTo(filterSnapshot.dateTo);
+    setTimeTo(filterSnapshot.timeTo);
+    setAuthorName(filterSnapshot.authorName);
+    setSelectedVideoId(filterSnapshot.selectedVideoId);
+    setMessageType(filterSnapshot.messageType);
+    setSortOrder(filterSnapshot.sortOrder);
+    setFilterSnapshot(null);
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Sidebar */}
@@ -240,28 +326,48 @@ function App() {
 
         {/* Date Filter */}
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-600 uppercase">投稿日</h3>
+          <h3 className="text-sm font-semibold text-slate-600 uppercase">投稿日時</h3>
           <div>
             <label htmlFor="date-from" className="block text-sm font-medium text-slate-700 mb-1">From</label>
-            <input
-              type="date"
-              id="date-from"
-              name="date-from"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-            />
+            <div className="flex flex-col gap-2">
+              <input
+                type="date"
+                id="date-from"
+                name="date-from"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+              <input
+                type="time"
+                id="time-from"
+                name="time-from"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={timeFrom}
+                onChange={(e) => setTimeFrom(e.target.value)}
+              />
+            </div>
           </div>
           <div>
             <label htmlFor="date-to" className="block text-sm font-medium text-slate-700 mb-1">To</label>
-            <input
-              type="date"
-              id="date-to"
-              name="date-to"
-              className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-            />
+            <div className="flex flex-col gap-2">
+              <input
+                type="date"
+                id="date-to"
+                name="date-to"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+              <input
+                type="time"
+                id="time-to"
+                name="time-to"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={timeTo}
+                onChange={(e) => setTimeTo(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -503,6 +609,20 @@ function App() {
             </div>
           </header>
 
+          {filterSnapshot && (
+            <div className="sticky top-0 z-10 mb-4 px-4 py-3 bg-blue-50/95 border border-blue-200 rounded-md flex items-center justify-between gap-4">
+              <p className="text-sm text-blue-800">
+                期間表示中: {formatRangeLabel(dateFrom, timeFrom)} 〜 {formatRangeLabel(dateTo, timeTo)}
+              </p>
+              <button
+                onClick={restoreSnapshot}
+                className="text-sm font-medium text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
+              >
+                元の検索に戻る
+              </button>
+            </div>
+          )}
+
           {/* Search Results */}
           <section className="space-y-4">
             <div className="flex justify-between items-center">
@@ -550,9 +670,21 @@ function App() {
                               <p className="text-sm text-slate-500">投稿日: {formatDate(result.timestampSec)}</p>
                             </div>
                           </div>
-                          <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                            {formatTimestamp(result.elapsedTime)}
-                          </span>
+                          <div className="flex flex-col items-center space-y-1">
+                            <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                              {formatTimestamp(result.elapsedTime)}
+                            </span>
+                            <button
+                              onClick={() => showContextAround(result)}
+                              className="text-slate-400 hover:text-blue-600 transition-colors"
+                              title="前後5分を表示"
+                              aria-label="前後5分を表示"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                         <p className="text-slate-700 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatMessage(result.message, searchQuery) }} />
                       </div>
@@ -576,7 +708,7 @@ function App() {
               })
             ) : (
               <div className="text-center py-12 text-slate-500">
-                {isLoading ? '検索中...' : (searchQuery || authorName || selectedVideoId ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。')}
+                {isLoading ? '検索中...' : (searchQuery || authorName || selectedVideoId || hasActiveDateRange ? '検索結果が見つかりませんでした。' : '検索キーワードを入力してください。')}
               </div>
             )}
             {isLoading && <div className="text-center py-4">読み込み中...</div>}

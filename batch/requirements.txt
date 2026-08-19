@@ -7,3 +7,4 @@ pathvalidate
 Pillow
 elasticsearch<=8.13.4
 emoji
+git+https://github.com/Indigo128/chat-downloader.git
