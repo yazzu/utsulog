@@ -2,7 +2,6 @@ google-api-python-client
 pytchat==0.5.5
 requests
 boto3
-yt-dlp
 pathvalidate
 Pillow
 elasticsearch<=8.13.4
