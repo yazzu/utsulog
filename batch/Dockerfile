@@ -14,6 +14,9 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# yt-dlpはYouTube側の仕様変更で頻繁に壊れるため、修正が最速で入るpre-release(nightly)版を使う
+RUN pip install --no-cache-dir --pre -U yt-dlp
+
 # アプリケーションコードをコピー
 COPY . .
 RUN chmod +x run_batch.sh
