@@ -42,6 +42,7 @@ def download_video(video_info, save_dir):
             'format': 'bestvideo[height<=360]+bestaudio/best[height<=360]',
             'outtmpl': save_path,
             'merge_output_format': 'mp4',
+            'extractor_args': {'youtube': {'js_runtimes': ['nodejs']}},
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
