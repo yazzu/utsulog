@@ -138,7 +138,7 @@ def main():
             print(f"[{total_count}] {title} ({video_id})")
             
             # 既存ファイルのチェック（既にある場合はスキップ）
-            output_file = os.path.join(output_dir, f"{video_id}_raw.ndjson")
+            output_file = os.path.join(output_dir, f"{video_id}.ndjson")
             if os.path.exists(output_file):
                 print(f"  [SKIP] ファイルが既に存在します: {output_file}")
                 skip_count += 1

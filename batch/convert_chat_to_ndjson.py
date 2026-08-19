@@ -214,7 +214,7 @@ def main():
         print("Error: VIDEOS_NDJSON 環境変数が設定されていません", file=sys.stderr)
         sys.exit(1)
     
-    raw_chat_logs_dir = os.path.join(local_chat_logs_dir, 'chat_logs_raw')
+    raw_chat_logs_dir = os.path.join(local_chat_logs_dir, 'raw_chat_logs')
     chat_logs_dir = os.path.join(local_chat_logs_dir, 'chat_logs')
     
     # ディレクトリの存在確認
