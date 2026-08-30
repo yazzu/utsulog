@@ -36,7 +36,7 @@
 
 | フィールド | 型 | 説明 |
 |---|---|---|
-| `id` | keyword | YouTubeコメントID。返信コメントの場合は`{parentCommentId}_{replyId}`のように親IDと組み合わせて一意にする。 |
+| `id` | keyword | YouTubeコメントID。返信コメントも含め、YouTube Data APIが返すグローバルに一意なコメントIDをそのまま使用する。 |
 | `videoId` | keyword | コメント対象の動画ID。`youtube-chat-logs_v3`と同じ値域。 |
 | `videoTitle` | text/keyword | 動画タイトル(非正規化。検索・表示の簡略化のため)。 |
 | `type` | keyword | 固定値 `"comment"`。チャット(`"chat"`)・字幕(`"transcript"`)と区別するための識別子。 |
