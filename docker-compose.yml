@@ -65,6 +65,7 @@ services:
       - ${UTSULOG_DATA}/videos:/app/videos # 動画リストNDJSON保存用
       - ${UTSULOG_DATA}/audios:/app/audios # 音声ファイル保存用
       - ${UTSULOG_DATA}/chat_logs:/app/chat_logs # チャットログ保存用
+      - ${UTSULOG_DATA}/comments:/app/comments # コメント保存用
       - ${UTSULOG_DATA}/thumbnails:/app/thumbnails # サムネイル保存用
       - ${UTSULOG_DATA}/videofiles:/app/videofiles # 動画ファイル一覧
       - ${UTSULOG_DATA}/author-icons:/app/author-icons # 動画ファイル一覧
@@ -77,10 +78,12 @@ services:
       - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
       - VIDEOS_INDEX_NAME=${VIDEOS_INDEX_NAME}
       - CHAT_LOGS_INDEX_NAME=${CHAT_LOGS_INDEX_NAME}
+      - COMMENTS_INDEX_NAME=${COMMENTS_INDEX_NAME}
       - VIDEOS_NDJSON=/app/videos/videos.ndjson # 動画リストNDJSON
       - VIDEOFILES_DIR=/app/videofiles # 動画ファイル保存用
       - AUDIOS_DIR=/app/audios # 音声ファイル保存用
       - LOCAL_CHAT_LOGS_DIR=/app/chat_logs # チャットログ保存用
+      - LOCAL_COMMENTS_DIR=/app/comments # コメント保存用
       - THUMBNAILS_DIR=/app/thumbnails # サムネイル保存用
       - SUBTITLES_DIR=/app/subtitles # 字幕ファイル保存用
       - CHANNEL_ID=UC64MV1Dfq3prs9CccXg09rQ # 氷室うつろさん
