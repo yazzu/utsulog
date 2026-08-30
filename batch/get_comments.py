@@ -170,3 +170,77 @@ def fetch_comments_for_video(youtube, video_id: str, video_title: str) -> list[d
             break
 
     return records
+
+
+def write_ndjson(records: list[dict], output_path: str) -> None:
+    with open(output_path, 'w', encoding='utf-8') as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False) + '\n')
+
+
+def main():
+    api_key = os.getenv('YOUTUBE_API_KEY')
+    if not api_key:
+        print("Error: YOUTUBE_API_KEY environment variable is not set.", file=sys.stderr)
+        sys.exit(1)
+
+    videos_ndjson_path = os.getenv('VIDEOS_NDJSON')
+    if not videos_ndjson_path or not os.path.exists(videos_ndjson_path):
+        print(f"Error: VIDEOS_NDJSON が見つかりません: {videos_ndjson_path}", file=sys.stderr)
+        sys.exit(1)
+
+    local_comments_dir = os.getenv('LOCAL_COMMENTS_DIR')
+    if not local_comments_dir:
+        print("Error: LOCAL_COMMENTS_DIR environment variable is not set.", file=sys.stderr)
+        sys.exit(1)
+
+    output_dir = os.path.join(local_comments_dir, 'comments')
+    os.makedirs(output_dir, exist_ok=True)
+
+    youtube = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=api_key)
+
+    videos = load_videos(videos_ndjson_path)
+    print(f"動画リストを読み込みました: {len(videos)} 件")
+    print("-" * 60)
+
+    total_count = 0
+    success_count = 0
+    empty_count = 0
+    error_count = 0
+
+    for video in videos:
+        video_id = video['video_id']
+        video_title = video['title']
+        total_count += 1
+        print(f"[{total_count}] {video_title} ({video_id})")
+
+        try:
+            records = fetch_comments_for_video(youtube, video_id, video_title)
+        except HttpError as e:
+            print(f"  [ERROR] {video_id}: APIエラー - {e}", file=sys.stderr)
+            error_count += 1
+            continue
+        except Exception as e:
+            print(f"  [ERROR] {video_id}: 予期しないエラー - {type(e).__name__}: {e}", file=sys.stderr)
+            error_count += 1
+            continue
+
+        if not records:
+            empty_count += 1
+            continue
+
+        output_file = os.path.join(output_dir, f"{video_id}_comments.ndjson")
+        write_ndjson(records, output_file)
+        print(f"  [OK] {video_id}: {len(records)} 件のコメントを保存しました -> {output_file}")
+        success_count += 1
+
+    print("-" * 60)
+    print("処理完了:")
+    print(f"  総動画数: {total_count}")
+    print(f"  成功: {success_count}")
+    print(f"  コメントなし/無効: {empty_count}")
+    print(f"  エラー: {error_count}")
+
+
+if __name__ == '__main__':
+    main()
