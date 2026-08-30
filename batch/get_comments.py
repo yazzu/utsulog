@@ -98,3 +98,75 @@ def build_comment_record(snippet: dict, comment_id: str, video_id: str, video_ti
         'isReply': is_reply,
         'parentId': parent_id,
     }
+
+
+def fetch_additional_replies(youtube, parent_id: str) -> list[dict]:
+    """
+    comments.list を使い、指定した親コメントIDに対する返信を全件取得する
+    """
+    replies = []
+    page_token = None
+    while True:
+        request = youtube.comments().list(
+            part='snippet',
+            parentId=parent_id,
+            maxResults=100,
+            pageToken=page_token
+        )
+        response = request.execute()
+        replies.extend(response.get('items', []))
+        page_token = response.get('nextPageToken')
+        if not page_token:
+            break
+    return replies
+
+
+def fetch_comments_for_video(youtube, video_id: str, video_title: str) -> list[dict]:
+    """
+    1動画分の全コメント(トップレベル+返信)をスキーマ形式で取得する。
+    コメントが無効化されている場合は空リストを返す。
+    """
+    records = []
+    page_token = None
+    while True:
+        try:
+            request = youtube.commentThreads().list(
+                part='snippet,replies',
+                videoId=video_id,
+                maxResults=100,
+                pageToken=page_token
+            )
+            response = request.execute()
+        except HttpError as e:
+            if is_comments_disabled_error(e):
+                print(f"  [INFO] {video_id}: コメントが無効化されています", file=sys.stderr)
+                return []
+            raise
+
+        for thread in response.get('items', []):
+            top_snippet = thread['snippet']['topLevelComment']['snippet']
+            top_id = thread['snippet']['topLevelComment']['id']
+            records.append(build_comment_record(
+                top_snippet, top_id, video_id, video_title,
+                is_reply=False, parent_id=None
+            ))
+
+            total_reply_count = thread['snippet'].get('totalReplyCount', 0)
+            embedded_replies = thread.get('replies', {}).get('comments', [])
+
+            if total_reply_count > len(embedded_replies):
+                reply_items = fetch_additional_replies(youtube, top_id)
+            else:
+                reply_items = embedded_replies
+
+            for reply in reply_items:
+                records.append(build_comment_record(
+                    reply['snippet'], reply['id'], video_id, video_title,
+                    is_reply=True, parent_id=top_id
+                ))
+
+        page_token = response.get('nextPageToken')
+        if not page_token:
+            break
+
+    return records
