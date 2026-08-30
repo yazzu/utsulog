@@ -217,7 +217,7 @@ def main():
         try:
             records = fetch_comments_for_video(youtube, video_id, video_title)
         except HttpError as e:
-            print(f"  [ERROR] {video_id}: APIエラー - {e}", file=sys.stderr)
+            print(f"  [ERROR] {video_id}: APIエラー - status={e.resp.status} reason={e.reason}", file=sys.stderr)
             error_count += 1
             continue
         except Exception as e:

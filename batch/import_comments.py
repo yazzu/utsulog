@@ -32,10 +32,14 @@ def _get_auth_headers():
     return headers
 
 
-def create_index_if_not_exists(index_name, es_url):
+def create_index_if_not_exists(index_name, es_url) -> bool:
     """
     指定されたインデックスが存在しない場合、messageフィールドにkuromojiアナライザーを
     設定して作成する。
+
+    Returns:
+        bool: インデックスが既に存在するか、作成に成功した場合はTrue。
+              作成に失敗した場合、または予期しないステータスコードだった場合はFalse。
     """
     index_url = f"{es_url}/{index_name}"
     headers = _get_auth_headers()
@@ -56,12 +60,16 @@ def create_index_if_not_exists(index_name, es_url):
             create_response = requests.put(index_url, headers=headers, json=settings, verify=ELASTICSEARCH_CA)
             create_response.raise_for_status()
             print(f"Index '{index_name}' created successfully.")
+            return True
         elif response.status_code == 200:
             print(f"Index '{index_name}' already exists.")
+            return True
         else:
             print(f"Unexpected status code when checking index '{index_name}': {response.status_code}")
+            return False
     except requests.exceptions.RequestException as e:
         print(f"Error checking/creating index '{index_name}': {e}")
+        return False
 
 
 def generate_bulk_payload(file_path, index_name):
@@ -163,7 +171,10 @@ def main():
             if os.path.isfile(file_path) and os.path.getsize(file_path) > 0:
                 files_to_process.append({'path': file_path})
 
-    create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)
+    index_ready = create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)
+    if not index_ready:
+        print(f"Error: Failed to ensure index '{INDEX_NAME}' exists. Aborting import.")
+        return
 
     if not files_to_process:
         print("No non-empty JSON files to process.")
