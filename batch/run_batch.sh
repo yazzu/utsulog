@@ -10,6 +10,8 @@ echo "Running get_videos.py..."
 python batch/get_videos.py
 echo "Running get_chatlogs.py..."
 python batch/get_chatlogs.py
+#echo "Running convert_chat_to_ndjson.py..."
+#python batch/convert_chat_to_ndjson.py
 echo "Running import_videos.py..."
 python batch/import_videos.py
 echo "Running import_chatlogs.py..."
