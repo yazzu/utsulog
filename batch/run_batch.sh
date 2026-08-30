@@ -16,6 +16,10 @@ echo "Running import_videos.py..."
 python batch/import_videos.py
 echo "Running import_chatlogs.py..."
 python batch/import_chatlogs.py
+echo "Running get_comments.py..."
+python batch/get_comments.py
+echo "Running import_comments.py..."
+python batch/import_comments.py
 echo "Running dl_video.py..."
 python batch/dl_video.py
 echo "Running gen_thumbnails.py..."
