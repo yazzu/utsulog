@@ -28,4 +28,6 @@ echo "Waiting 5 seconds for index refresh..."
 sleep 5
 echo "Running upload_thumbnails.py..."
 python batch/upload_thumbnails.py
+echo "Running backup_to_s3.py..."
+python batch/backup_to_s3.py
 echo "Batch process finished successfully."
