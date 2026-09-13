@@ -17,6 +17,8 @@ The application is divided into two main components: the **Batch System** for da
 
 The batch system runs periodically to gather the latest chat logs and index them into Elasticsearch.
 
+The shared video list includes regular uploads and live broadcasts, with `isLive` and `membersOnly` flags. See the [video flag contract and backfill procedure](docs/operations/video-flags.md) for consumer compatibility and migration instructions.
+
 ```
 ┌───────────────────┐      ┌───────────────────┐      ┌───────────────────────┐      ┌─────────────────┐
 │  get_videos.py    │───►│  get_chatlogs.py   │───►│ import_videos/chat_logs.py │───►│  Elasticsearch  │

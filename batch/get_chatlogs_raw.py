@@ -6,6 +6,7 @@ chat-downloaderライブラリを使用して、YouTube動画のチャットリ�
 Rawデータとして保存します。
 """
 
+from video_policy import is_completed_live
 import json
 import os
 import sys
@@ -121,6 +122,9 @@ def main():
                 error_count += 1
                 continue
             
+            if not is_completed_live(video_data):
+                skip_count += 1
+                continue
             url = video_data.get('video_url')
             title = video_data.get('title')
             try:

@@ -43,21 +43,63 @@ def create_index_if_not_exists(index_name, es_url):
     """
     index_url = f"{es_url}/{index_name}"
     headers = _get_auth_headers()
+    headers['Content-Type'] = 'application/json'
+    properties = {
+        'isLive': {'type': 'boolean'},
+        'membersOnly': {'type': 'boolean'},
+        'actualEndTime': {'type': 'keyword'},
+        'membersOnlyEvidence': {'type': 'keyword'},
+        'membersOnlyCheckedAt': {'type': 'date'},
+        'videoDetailsStatus': {'type': 'keyword'},
+    }
+    response = requests.head(index_url, headers=headers, verify=ELASTICSEARCH_CA, timeout=30)
+    if response.status_code == 404:
+        response = requests.put(index_url, headers=headers,
+                                json={'mappings': {'properties': properties}},
+                                verify=ELASTICSEARCH_CA, timeout=30)
+        response.raise_for_status()
+    else:
+        response.raise_for_status()
+        response = requests.put(f'{index_url}/_mapping', headers=headers,
+                                json={'properties': properties},
+                                verify=ELASTICSEARCH_CA, timeout=30)
+        response.raise_for_status()
+
+
+def load_index_videos():
+    """Read all IDs with a scroll; never delete/recreate the existing index."""
+    headers = _get_auth_headers()
+    headers['Content-Type'] = 'application/json'
+    kwargs = dict(headers=headers, verify=ELASTICSEARCH_CA, timeout=60)
+    response = requests.post(f'{ELASTICSEARCH_URL}/{INDEX_NAME}/_search',
+                             params={'scroll': '2m'},
+                             json={'size': 500, 'sort': ['_doc'], 'query': {'match_all': {}},
+                                   '_source': ['title', 'video_url', 'thumbnail_url', 'publishedAt']},
+                             **kwargs)
+    response.raise_for_status()
+    page = response.json()
+    scroll_id = page.get('_scroll_id')
+    videos = {}
     try:
-        response = requests.head(index_url, headers=headers, verify=ELASTICSEARCH_CA) # インデックスの存在を確認
-        if response.status_code == 404: # インデックスが存在しない場合
-            print(f"Index '{index_name}' does not exist. Creating...")
-            # Serverlessではレプリカ数の設定は無視されるか、エラーになる可能性があるため、設定を削除
-            # ただし、既存のコードとの互換性を保つため、空のsettingsでPUTを試みる
-            create_response = requests.put(index_url, headers=headers, json={}, verify=ELASTICSEARCH_CA)
-            create_response.raise_for_status()
-            print(f"Index '{index_name}' created successfully.")
-        elif response.status_code == 200:
-            print(f"Index '{index_name}' already exists.")
-        else:
-            print(f"Unexpected status code when checking index '{index_name}': {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error checking/creating index '{index_name}': {e}")
+        while page['hits']['hits']:
+            for hit in page['hits']['hits']:
+                row = hit.get('_source', {})
+                row.setdefault('video_url', f"https://www.youtube.com/watch?v={hit['_id']}")
+                videos[hit['_id']] = row
+            if not scroll_id:
+                raise RuntimeError('Missing scroll ID; refusing an incomplete backfill')
+            response = requests.post(f'{ELASTICSEARCH_URL}/_search/scroll',
+                                     json={'scroll': '2m', 'scroll_id': scroll_id}, **kwargs)
+            response.raise_for_status()
+            page = response.json()
+            scroll_id = page.get('_scroll_id', scroll_id)
+    finally:
+        if scroll_id:
+            response = requests.delete(f'{ELASTICSEARCH_URL}/_search/scroll',
+                                       json={'scroll_id': [scroll_id]}, **kwargs)
+            response.raise_for_status()
+    return videos
+
 
 def extract_video_id(video_info):
     """
@@ -86,6 +128,14 @@ def generate_bulk_payload_from_chunk(chunk, index_name):
         
         try:
             video_info = json.loads(line)
+            if video_info.get('videoDetailsStatus') == 'unavailable':
+                for field in ('title', 'thumbnail_url', 'publishedAt', 'actualStartTime', 'actualEndTime', 'isLive'):
+                    video_info.pop(field, None)
+            for field in ('membersOnly', 'isLive'):
+                if video_info.get(field) is None:
+                    video_info.pop(field, None)
+                elif type(video_info[field]) is not bool:
+                    raise ValueError(f'{field} must be boolean or null')
             video_id = extract_video_id(video_info)
             if video_id:
                 # updateアクションとdoc_as_upsertを使用
@@ -171,13 +221,18 @@ def main():
                 if payload:
                     futures.append(executor.submit(send_to_elasticsearch, payload, chunk_index))
         
+        failures = []
         for future in as_completed(futures):
             try:
                 result = future.result()
                 print(result)
+                if result.startswith('Failed'):
+                    failures.append(result)
             except Exception as exc:
-                print(f"An error occurred during processing a chunk: {exc}")
+                failures.append(str(exc))
 
+    if failures:
+        raise RuntimeError("Import failed: " + "; ".join(failures))
     print("\nImport process finished.")
     try:
         count_url = f"{ELASTICSEARCH_URL}/{INDEX_NAME}/_count"

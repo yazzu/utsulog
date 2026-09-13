@@ -1,3 +1,4 @@
+from video_policy import is_completed_live
 import os
 import json
 import yt_dlp
@@ -11,6 +12,8 @@ def download_video(video_info, save_dir):
     """
     指定された動画情報を元に、yt-dlpを使用して動画をダウンロードする。
     """
+    if not is_completed_live(video_info):
+        return
     try:
         video_url = video_info.get("video_url")
         actual_start_time = video_info.get("actualStartTime")

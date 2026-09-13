@@ -139,7 +139,20 @@ def get_videos(request: Request):
 
     search_query = {
         "query": {
-            "match_all": {}
+            "bool": {
+                "should": [
+                    {"bool": {"filter": [
+                        {"term": {"isLive": True}},
+                        {"exists": {"field": "actualEndTime"}}
+                    ]}},
+                    # Legacy rows were collected only after live broadcasts ended.
+                    {"bool": {
+                        "must_not": [{"exists": {"field": "isLive"}}],
+                        "filter": [{"exists": {"field": "actualStartTime"}}]
+                    }}
+                ],
+                "minimum_should_match": 1
+            }
         },
         "sort": [
             {
