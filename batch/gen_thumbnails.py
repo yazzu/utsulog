@@ -37,6 +37,8 @@ def get_unprocessed_video_ids():
         "_source": False, # IDだけ欲しいのでソースは不要
         "query": {
             "bool": {
+                "filter": [{"term": {"isLive": True}},
+                           {"exists": {"field": "actualEndTime"}}],
                 "must_not": {
                     "term": {"thumbnail_created": True}
                 }

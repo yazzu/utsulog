@@ -1,3 +1,4 @@
+from video_policy import is_completed_live
 
 import pytchat
 import json
@@ -19,6 +20,8 @@ def main():
         for line in f:
             try:
                 video_data = json.loads(line)
+                if not is_completed_live(video_data):
+                    continue
                 title = video_data.get('title')
                 url = video_data.get('video_url')
 

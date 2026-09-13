@@ -1,3 +1,4 @@
+from video_policy import is_completed_live
 import json
 import os
 import re
@@ -30,6 +31,8 @@ def main():
                 print(f"Failed to parse JSON line: {line[:100]}...")
                 continue
 
+            if not is_completed_live(video_info):
+                continue
             video_url = video_info.get("video_url")
             actual_start_time = video_info.get("actualStartTime")
             video_id = video_info.get("videoId")
