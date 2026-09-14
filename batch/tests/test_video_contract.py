@@ -115,10 +115,12 @@ def test_title_is_not_membership_evidence_and_wrong_video_is_unknown():
 
 
 def test_watch_failure_and_parser(monkeypatch):
+    monkeypatch.setattr('video_membership._wait', lambda *args: None)
     get = Mock(side_effect=requests.Timeout)
     monkeypatch.setattr('video_membership.requests.get', get)
     assert get_membership('v')[0] is None
     get.side_effect = None
+    get.return_value.status_code = 200
     get.return_value.text = 'var ytInitialPlayerResponse = ' + json.dumps({
         'videoDetails': {'videoId': 'v'}, 'playabilityStatus': {'status': 'OK'}}) + ';'
     assert get_membership('v')[0] is False
