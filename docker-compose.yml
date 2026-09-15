@@ -56,9 +56,6 @@ services:
     command: npm run dev
 
   batch:
-    networks:
-      - default
-      - elastic
     build:
       context: ./batch
       dockerfile: Dockerfile
@@ -76,9 +73,11 @@ services:
     environment:
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
-      - ELASTICSEARCH_URL=${ELASTICSEARCH_HOST}
+      - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
       - ELASTICSEARCH_ADMIN=${ELASTICSEARCH_ADMIN}
       - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - CF_CLIENT_ID=${CF_CLIENT_ID}
+      - CF_CLIENT_SECRET=${CF_CLIENT_SECRET}
       - VIDEOS_INDEX_NAME=${VIDEOS_INDEX_NAME}
       - CHAT_LOGS_INDEX_NAME=${CHAT_LOGS_INDEX_NAME}
       - COMMENTS_INDEX_NAME=${COMMENTS_INDEX_NAME}
@@ -98,11 +97,6 @@ services:
       - ELASTICSEARCH_CA=${ELASTICSEARCH_CA} # Elasticsearch CA証明書ファイル名
     extra_hosts:
       - "miniutsuro:${MINIUTSURI_HOST}"
-
-networks:
-  elastic:
-    external: true
-    name: elastic
 
 volumes:
   esdata:

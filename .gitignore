@@ -67,3 +67,5 @@ deploy_ecr_api.sh
 miniutsuro_es_ca.crt
 test/*
 deploy_frontend_staging.sh
+wsl2-elasticsearch-access-instruction.md
+utsulog-issue12-rollout-status.md
