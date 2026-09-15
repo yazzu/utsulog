@@ -39,7 +39,6 @@ def find_candidates(es_url, index_name):
         f"{es_url}/{index_name}/_search",
         json={
             "size": 10000,
-            "sort": ["_id"],
             "track_total_hits": True,
             "_source": ["title", "video_url", "isLive", "actualEndTime"],
             "query": unfinished_live_query(),

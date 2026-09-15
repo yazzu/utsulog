@@ -27,6 +27,7 @@ def test_dry_run_lists_candidates_without_deleting(monkeypatch, capsys):
     assert post.call_count == 1
     assert "scheduled\tupcoming" in capsys.readouterr().out
     assert post.call_args.kwargs["json"]["query"] == cleanup.unfinished_live_query()
+    assert "sort" not in post.call_args.kwargs["json"]
 
 
 def test_execute_requires_matching_expected_count(monkeypatch):
