@@ -8,6 +8,16 @@ echo "Starting batch process..."
 # 1. 動画リストの取得とS3へのアップロード
 echo "Running get_videos.py..."
 python batch/get_videos.py
+echo "Validating Shorts manifest..."
+python - <<'PY'
+import os
+import sys
+sys.path.insert(0, 'batch')
+from shorts import load_manifest
+
+ids = load_manifest(channel_id=os.environ['CHANNEL_ID'], required=True)
+print(f"Shorts manifest validated: {len(ids)} IDs")
+PY
 echo "Running get_chatlogs.py..."
 python batch/get_chatlogs.py
 #echo "Running convert_chat_to_ndjson.py..."

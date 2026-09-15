@@ -2,17 +2,34 @@ from video_policy import is_completed_live
 import os
 import json
 import yt_dlp
-from pathvalidate import sanitize_filename
 from urllib.parse import urlparse, parse_qs
+from video_filename import build_video_filename
 
 # 動画情報が保存されているNDJSONファイルのパス
 VIDEOS_NDJSON_PATH = os.getenv('VIDEOS_NDJSON')
+
+
+def find_downloaded_video(save_dir, video_id):
+    """Return an existing completed download for the video ID, if any."""
+    id_marker = f"_[{video_id}]_"
+    try:
+        with os.scandir(save_dir) as entries:
+            for entry in entries:
+                if entry.is_file() and entry.name.endswith('.mp4') and id_marker in entry.name:
+                    return entry.path
+    except FileNotFoundError:
+        return None
+    return None
+
 
 def download_video(video_info, save_dir):
     """
     指定された動画情報を元に、yt-dlpを使用して動画をダウンロードする。
     """
     if not is_completed_live(video_info):
+        return
+    if video_info.get("membersOnly") is True:
+        print(f"Skipping members-only video: {video_info.get('title')}")
         return
     try:
         video_url = video_info.get("video_url")
@@ -28,14 +45,14 @@ def download_video(video_info, save_dir):
             print(f"Skipping due to missing data: {video_info}")
             return
 
-        # ファイル名をサニタイズし、パスを構築
-        sanitized_title = sanitize_filename(title)
-        file_name = f"{actual_start_time}_[{video_id}]_{sanitized_title}.mp4"
+        # yt-dlpが一時サフィックスを追加できる長さでパスを構築
+        file_name = build_video_filename(actual_start_time, video_id, title)
         save_path = os.path.join(save_dir, file_name)
 
-        # ファイルが既に存在する場合はスキップ
-        if os.path.exists(save_path):
-            print(f"File already exists, skipping: {file_name}")
+        # タイトルの短縮ルールが変わっても、同じ動画IDの完成済みファイルはスキップ
+        existing_path = find_downloaded_video(save_dir, video_id)
+        if existing_path:
+            print(f"File already exists, skipping: {os.path.basename(existing_path)}")
             return
 
         print(f"Downloading: {title}")

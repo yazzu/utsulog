@@ -74,6 +74,7 @@ services:
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
       - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+      - ELASTICSEARCH_API_KEY=${ELASTICSEARCH_API_KEY}
       - ELASTICSEARCH_ADMIN=${ELASTICSEARCH_ADMIN}
       - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
       - CF_CLIENT_ID=${CF_CLIENT_ID}
@@ -82,6 +83,7 @@ services:
       - CHAT_LOGS_INDEX_NAME=${CHAT_LOGS_INDEX_NAME}
       - COMMENTS_INDEX_NAME=${COMMENTS_INDEX_NAME}
       - VIDEOS_NDJSON=/app/videos/videos.ndjson # 動画リストNDJSON
+      - SHORTS_MANIFEST=/app/videos/shorts-manifest.json
       - VIDEOFILES_DIR=/app/videofiles # 動画ファイル保存用
       - AUDIOS_DIR=/app/audios # 音声ファイル保存用
       - LOCAL_CHAT_LOGS_DIR=/app/chat_logs # チャットログ保存用

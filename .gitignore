@@ -41,6 +41,7 @@ Thumbs.db
 .gemini/
 
 # Project specific
+/rollout-backups/
 .gitignore
 *.tsv
 chat_logs/*.json

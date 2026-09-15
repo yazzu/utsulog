@@ -6,7 +6,9 @@ from googleapiclient.discovery import build
 import argparse
 import tempfile
 from urllib.parse import urlparse, parse_qs
-from video_membership import get_membership
+from video_membership import get_membership, MembershipUnavailable
+from collections import Counter
+from shorts import get_shorts_ids, load_manifest, save_manifest
 
 # --- 設定 ---
 # 対象のチャンネルID
@@ -122,23 +124,37 @@ def load_previous(path):
                 for line in source if line.strip() for row in [json.loads(line)]}
 
 
-def collect(youtube, video_ids, previous, membership=get_membership):
+def collect(youtube, video_ids, previous, membership=get_membership, shorts_ids=None):
     # API errors abort before replacing the previous file. Missing items preserve metadata.
     details = get_video_details(youtube, video_ids)
     fresh = {parse_qs(urlparse(row['video_url']).query)['v'][0]: row for row in details}
     rows = []
+    evidence_counts = Counter()
+    consecutive_failures = failures = 0
     for video_id in dict.fromkeys(video_ids):
+        if shorts_ids is not None and video_id in shorts_ids:
+            continue
         # Never re-import stale processing statuses or stale confirmed flags from disk.
         row = {key: value for key, value in previous.get(video_id, {}).items()
                if key in ('title', 'video_url', 'thumbnail_url', 'publishedAt')}
         row.update(fresh.get(video_id, {}))
         row.setdefault('video_url', f'https://www.youtube.com/watch?v={video_id}')
         verdict, evidence = membership(video_id)
+        evidence_counts[evidence] += 1
+        failed = verdict is None and evidence != 'watch_player_offline'
+        failures += int(failed)
+        consecutive_failures = consecutive_failures + 1 if failed else 0
+        checked = len(rows) + 1
+        if checked % 25 == 0 or failed:
+            print(f'Membership progress: checked={checked} failures={failures} evidence={dict(evidence_counts)}', flush=True)
+        if consecutive_failures >= 5 or (checked >= 20 and failures / checked >= 0.25):
+            raise MembershipUnavailable('Membership failure threshold exceeded; previous NDJSON was not replaced')
         row['membersOnly'] = verdict
         row['membersOnlyEvidence'] = evidence
         row['membersOnlyCheckedAt'] = datetime.now(timezone.utc).isoformat()
         row['videoDetailsStatus'] = 'ok' if video_id in fresh else 'unavailable'
         rows.append(row)
+    print(f'Membership summary: checked={len(rows)} failures={failures} evidence={dict(evidence_counts)}', flush=True)
     return rows
 
 
@@ -178,7 +194,11 @@ def main():
     ids = list(dict.fromkeys([*ids, *previous]))
     if not ids:
         raise RuntimeError('No video IDs found; previous output was not replaced')
-    write_to_ndjson(collect(youtube, ids, previous), OUTPUT_NDJSON)
+    shorts_ids = load_manifest(channel_id=CHANNEL_ID) | get_shorts_ids(CHANNEL_ID)
+    ids = [video_id for video_id in ids if video_id not in shorts_ids]
+    rows = collect(youtube, ids, previous, shorts_ids=shorts_ids)
+    save_manifest(shorts_ids, CHANNEL_ID)
+    write_to_ndjson(rows, OUTPUT_NDJSON)
 
 
 if __name__ == '__main__':

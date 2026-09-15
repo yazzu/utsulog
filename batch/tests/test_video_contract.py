@@ -9,6 +9,7 @@ from get_comments import load_videos
 from import_videos import generate_bulk_payload_from_chunk, create_index_if_not_exists, load_index_videos
 from video_membership import classify_player, get_membership
 from video_policy import is_completed_live
+from video_filename import build_video_filename, MAX_VIDEO_FILENAME_BYTES
 
 
 def item(video_id, live=None):
@@ -115,10 +116,12 @@ def test_title_is_not_membership_evidence_and_wrong_video_is_unknown():
 
 
 def test_watch_failure_and_parser(monkeypatch):
+    monkeypatch.setattr('video_membership._wait', lambda *args: None)
     get = Mock(side_effect=requests.Timeout)
     monkeypatch.setattr('video_membership.requests.get', get)
     assert get_membership('v')[0] is None
     get.side_effect = None
+    get.return_value.status_code = 200
     get.return_value.text = 'var ytInitialPlayerResponse = ' + json.dumps({
         'videoDetails': {'videoId': 'v'}, 'playabilityStatus': {'status': 'OK'}}) + ';'
     assert get_membership('v')[0] is False
@@ -159,6 +162,55 @@ def test_download_skips_unfinished_and_regular_videos(tmp_path, monkeypatch):
     for row in ({'isLive': False}, {'isLive': True}, {}):
         download_video(row, str(tmp_path))
     downloader.assert_not_called()
+
+
+def test_download_skips_members_only_video(tmp_path, monkeypatch, capsys):
+    from dl_video import download_video
+    downloader = Mock()
+    monkeypatch.setattr('dl_video.yt_dlp.YoutubeDL', downloader)
+
+    download_video({
+        'isLive': True,
+        'actualStartTime': '20260914205957',
+        'actualEndTime': '20260915000000',
+        'membersOnly': True,
+        'videoId': 'qmQ4VJ5TfxY',
+        'video_url': 'https://www.youtube.com/watch?v=qmQ4VJ5TfxY',
+        'title': 'members-only stream',
+    }, str(tmp_path))
+
+    downloader.assert_not_called()
+    assert 'Skipping members-only video: members-only stream' in capsys.readouterr().out
+
+
+def test_download_skips_existing_video_id_with_different_title(tmp_path, monkeypatch):
+    from dl_video import download_video
+    existing = tmp_path / '20260914205957_[video-id]_legacy-long-title.mp4'
+    existing.touch()
+    downloader = Mock()
+    monkeypatch.setattr('dl_video.yt_dlp.YoutubeDL', downloader)
+
+    download_video({
+        'isLive': True,
+        'actualStartTime': '20260914205957',
+        'actualEndTime': '20260915000000',
+        'videoId': 'video-id',
+        'video_url': 'https://www.youtube.com/watch?v=video-id',
+        'title': 'new title that produces a different filename',
+    }, str(tmp_path))
+
+    downloader.assert_not_called()
+
+
+def test_video_filename_leaves_room_for_downloader_suffixes():
+    filename = build_video_filename(
+        '20260914205957', '_wEeQejGDy8',
+        '【トルネコの大冒険】' * 30,
+    )
+    assert len(filename.encode('utf-8')) <= MAX_VIDEO_FILENAME_BYTES
+    assert filename.startswith('20260914205957_[_wEeQejGDy8]_')
+    assert filename.endswith('.mp4')
+    filename.encode('utf-8')
 
 
 def test_failed_api_details_do_not_overwrite_existing_metadata():
