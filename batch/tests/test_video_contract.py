@@ -48,6 +48,20 @@ def test_live_states_and_all_video_comment_input(tmp_path):
     assert len(load_previous(path)) == 4
 
 
+def test_collect_excludes_scheduled_and_active_live_broadcasts():
+    api = youtube([item('upload'), item('scheduled', {}),
+                   item('active', {'actualStartTime': '2026-09-01T01:00:00Z'}),
+                   item('ended', {'actualStartTime': '2026-09-01T01:00:00Z',
+                                  'actualEndTime': '2026-09-01T02:00:00Z'})])
+    membership = Mock(return_value=(False, 'test'))
+
+    rows = collect(api, ['upload', 'scheduled', 'active', 'ended'], {},
+                   membership=membership)
+
+    assert [row['video_url'].split('=')[-1] for row in rows] == ['upload', 'ended']
+    assert [call.args[0] for call in membership.call_args_list] == ['upload', 'ended']
+
+
 @pytest.mark.parametrize('verdict', [True, False, None])
 def test_membership_updates_preserve_status_and_unknown_flags(verdict):
     previous = {'v': {'title': 'old', 'membersOnly': True, 'isLive': True,

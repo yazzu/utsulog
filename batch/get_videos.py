@@ -134,10 +134,16 @@ def collect(youtube, video_ids, previous, membership=get_membership, shorts_ids=
     for video_id in dict.fromkeys(video_ids):
         if shorts_ids is not None and video_id in shorts_ids:
             continue
+        fresh_row = fresh.get(video_id)
+        # Scheduled and currently running live broadcasts have no archive yet.
+        # Reconsider them on the next run, once YouTube reports actualEndTime.
+        if (fresh_row and fresh_row.get('isLive') is True
+                and not fresh_row.get('actualEndTime')):
+            continue
         # Never re-import stale processing statuses or stale confirmed flags from disk.
         row = {key: value for key, value in previous.get(video_id, {}).items()
                if key in ('title', 'video_url', 'thumbnail_url', 'publishedAt')}
-        row.update(fresh.get(video_id, {}))
+        row.update(fresh_row or {})
         row.setdefault('video_url', f'https://www.youtube.com/watch?v={video_id}')
         verdict, evidence = membership(video_id)
         evidence_counts[evidence] += 1
