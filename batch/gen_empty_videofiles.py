@@ -3,7 +3,7 @@ import json
 import os
 import re
 from urllib.parse import urlparse, parse_qs
-from pathvalidate import sanitize_filename
+from video_filename import build_video_filename
 
 VIDEOS_NDJSON = os.getenv('VIDEOS_NDJSON')
 VIDEOFILES_DIR = os.getenv("VIDEOFILES_DIR")
@@ -49,9 +49,8 @@ def main():
                 print(f"Skipping entry due to missing info (actualStartTime={actual_start_time}, videoId={video_id})")
                 continue
 
-            # Sanitize filename and build path
-            sanitized_title = sanitize_filename(title)
-            file_name = f"{actual_start_time}_[{video_id}]_{sanitized_title}.mp4"
+            # Build the same bounded filename used by the downloader.
+            file_name = build_video_filename(actual_start_time, video_id, title)
             file_path = os.path.join(VIDEOFILES_DIR, file_name)
 
             # Create empty file if it doesn't exist
