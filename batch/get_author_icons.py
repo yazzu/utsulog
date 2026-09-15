@@ -12,6 +12,7 @@ import time
 # --- Configuration ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
+ELASTICSEARCH_CA = os.getenv("ELASTICSEARCH_CA")
 CHAT_LOGS_INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME", "youtube-chat-logs_v2")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 S3_BUCKET_NAME = os.getenv("S3_AUTHOR_ICON_BUCKET_NAME", "utsulog-author-icons")
@@ -119,10 +120,17 @@ def upload_to_s3(file_path, bucket, object_name):
 
 def main():
     # 1. Connect to Elasticsearch
+    if not ELASTICSEARCH_URL:
+        print("Error: ELASTICSEARCH_URL not set.")
+        return
+
+    es_options = {}
     if ELASTICSEARCH_API_KEY:
-        es = Elasticsearch(ELASTICSEARCH_URL, api_key=ELASTICSEARCH_API_KEY)
-    else:
-        es = Elasticsearch(ELASTICSEARCH_URL)
+        es_options["api_key"] = ELASTICSEARCH_API_KEY
+    if ELASTICSEARCH_CA:
+        es_options["ca_certs"] = ELASTICSEARCH_CA
+
+    es = Elasticsearch(ELASTICSEARCH_URL, **es_options)
 
     # 2. Connect to YouTube API
     if not YOUTUBE_API_KEY:
