@@ -83,6 +83,7 @@ services:
       - CHAT_LOGS_INDEX_NAME=${CHAT_LOGS_INDEX_NAME}
       - COMMENTS_INDEX_NAME=${COMMENTS_INDEX_NAME}
       - VIDEOS_NDJSON=/app/videos/videos.ndjson # 動画リストNDJSON
+      - SHORTS_MANIFEST=/app/videos/shorts-manifest.json
       - VIDEOFILES_DIR=/app/videofiles # 動画ファイル保存用
       - AUDIOS_DIR=/app/audios # 音声ファイル保存用
       - LOCAL_CHAT_LOGS_DIR=/app/chat_logs # チャットログ保存用

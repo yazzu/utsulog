@@ -4,6 +4,7 @@ import json
 from urllib.parse import urlparse, parse_qs
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import base64
+from shorts import load_manifest
 
 # --- 設定 ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
@@ -46,6 +47,7 @@ def create_index_if_not_exists(index_name, es_url):
     headers['Content-Type'] = 'application/json'
     properties = {
         'isLive': {'type': 'boolean'},
+        'isShort': {'type': 'boolean'},
         'membersOnly': {'type': 'boolean'},
         'actualEndTime': {'type': 'keyword'},
         'membersOnlyEvidence': {'type': 'keyword'},
@@ -74,7 +76,7 @@ def load_index_videos():
     response = requests.post(f'{ELASTICSEARCH_URL}/{INDEX_NAME}/_search',
                              params={'scroll': '2m'},
                              json={'size': 500, 'sort': ['_doc'], 'query': {'match_all': {}},
-                                   '_source': ['title', 'video_url', 'thumbnail_url', 'publishedAt']},
+                                   '_source': ['title', 'video_url', 'thumbnail_url', 'publishedAt', 'isShort']},
                              **kwargs)
     response.raise_for_status()
     page = response.json()
@@ -115,7 +117,7 @@ def extract_video_id(video_info):
         except Exception as e:
             pass
 
-def generate_bulk_payload_from_chunk(chunk, index_name):
+def generate_bulk_payload_from_chunk(chunk, index_name, shorts_ids=None):
     """
     NDJSONのチャンク（行のリスト）からBulk API用のペイロード文字列を生成する。
     doc_as_upsertを使用して、既存のフィールド（処理ステータス等）を維持する。
@@ -128,15 +130,18 @@ def generate_bulk_payload_from_chunk(chunk, index_name):
         
         try:
             video_info = json.loads(line)
+            video_id = extract_video_id(video_info)
+            if (video_info.get('isShort') is True or
+                    (shorts_ids is not None and video_id in shorts_ids)):
+                continue
             if video_info.get('videoDetailsStatus') == 'unavailable':
                 for field in ('title', 'thumbnail_url', 'publishedAt', 'actualStartTime', 'actualEndTime', 'isLive'):
                     video_info.pop(field, None)
-            for field in ('membersOnly', 'isLive'):
+            for field in ('membersOnly', 'isLive', 'isShort'):
                 if video_info.get(field) is None:
                     video_info.pop(field, None)
                 elif type(video_info[field]) is not bool:
                     raise ValueError(f'{field} must be boolean or null')
-            video_id = extract_video_id(video_info)
             if video_id:
                 # updateアクションとdoc_as_upsertを使用
                 action_meta = json.dumps({"update": {"_index": index_name, "_id": video_id}})
@@ -197,6 +202,7 @@ def main():
     メイン処理。NDJSONファイルをチャンクに分割し、並列で処理する。
     """
     target_ndjson_file = LOCAL_NDJSON_FILE
+    shorts_ids = load_manifest(channel_id=os.getenv('CHANNEL_ID'), required=True)
     
     # インデックス削除処理（delete_index_if_exists）は廃止
     create_index_if_not_exists(INDEX_NAME, ELASTICSEARCH_URL)
@@ -217,7 +223,7 @@ def main():
                     break
                 
                 chunk_index += 1
-                payload = generate_bulk_payload_from_chunk(chunk, INDEX_NAME)
+                payload = generate_bulk_payload_from_chunk(chunk, INDEX_NAME, shorts_ids)
                 if payload:
                     futures.append(executor.submit(send_to_elasticsearch, payload, chunk_index))
         
