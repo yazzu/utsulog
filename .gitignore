@@ -42,6 +42,8 @@ Thumbs.db
 
 # Project specific
 /rollout-backups/
+.batch-logrotate.status
+batch_cron.log.*
 .gitignore
 *.tsv
 chat_logs/*.json
