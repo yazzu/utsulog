@@ -9,9 +9,11 @@ import base64
 
 # --- 設定 ---
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
-ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA') # 証明書ファイル名
+ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA') or True
 ELASTICSEARCH_ADMIN = os.getenv('ELASTICSEARCH_ADMIN')
 ELASTICSEARCH_PASSWORD = os.getenv('ELASTICSEARCH_PASSWORD')
+CF_CLIENT_ID = os.getenv('CF_CLIENT_ID')
+CF_CLIENT_SECRET = os.getenv('CF_CLIENT_SECRET')
 INDEX_NAME = os.getenv("VIDEOS_INDEX_NAME")
 
 def _get_auth_headers():
@@ -20,6 +22,9 @@ def _get_auth_headers():
         auth_str = f"{ELASTICSEARCH_ADMIN}:{ELASTICSEARCH_PASSWORD}"
         encoded_auth = base64.b64encode(auth_str.encode()).decode()
         headers["Authorization"] = f"Basic {encoded_auth}"
+    if CF_CLIENT_ID and CF_CLIENT_SECRET:
+        headers["CF-Access-Client-Id"] = CF_CLIENT_ID
+        headers["CF-Access-Client-Secret"] = CF_CLIENT_SECRET
     return headers
 
 def get_pending_upload_video_ids():

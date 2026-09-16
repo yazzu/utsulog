@@ -11,9 +11,11 @@ INDEX_NAME = os.getenv("COMMENTS_INDEX_NAME", "youtube-comments_v1")
 LOCAL_COMMENTS_DIR = os.path.join(os.getenv('LOCAL_COMMENTS_DIR'), "comments")
 LOCAL_COMMENTS_PROCESSED_DIR = os.path.join(os.getenv('LOCAL_COMMENTS_DIR'), "comments_processed")
 LOCAL_COMMENTS_ERROR_DIR = os.path.join(os.getenv('LOCAL_COMMENTS_DIR'), "comments_error")
-ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA')
+ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA') or True
 ELASTICSEARCH_ADMIN = os.getenv('ELASTICSEARCH_ADMIN')
 ELASTICSEARCH_PASSWORD = os.getenv('ELASTICSEARCH_PASSWORD')
+CF_CLIENT_ID = os.getenv('CF_CLIENT_ID')
+CF_CLIENT_SECRET = os.getenv('CF_CLIENT_SECRET')
 
 if not ELASTICSEARCH_URL:
     raise ValueError("ELASTICSEARCH_URL environment variable is not set.")
@@ -29,6 +31,9 @@ def _get_auth_headers():
         auth_str = f"{ELASTICSEARCH_ADMIN}:{ELASTICSEARCH_PASSWORD}"
         encoded_auth = base64.b64encode(auth_str.encode()).decode()
         headers["Authorization"] = f"Basic {encoded_auth}"
+    if CF_CLIENT_ID and CF_CLIENT_SECRET:
+        headers["CF-Access-Client-Id"] = CF_CLIENT_ID
+        headers["CF-Access-Client-Secret"] = CF_CLIENT_SECRET
     return headers
 
 

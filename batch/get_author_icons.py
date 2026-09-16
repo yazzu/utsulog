@@ -13,6 +13,10 @@ import time
 ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
 ELASTICSEARCH_API_KEY = os.getenv("ELASTICSEARCH_API_KEY")
 ELASTICSEARCH_CA = os.getenv("ELASTICSEARCH_CA")
+ELASTICSEARCH_ADMIN = os.getenv("ELASTICSEARCH_ADMIN")
+ELASTICSEARCH_PASSWORD = os.getenv("ELASTICSEARCH_PASSWORD")
+CF_CLIENT_ID = os.getenv("CF_CLIENT_ID")
+CF_CLIENT_SECRET = os.getenv("CF_CLIENT_SECRET")
 CHAT_LOGS_INDEX_NAME = os.getenv("CHAT_LOGS_INDEX_NAME", "youtube-chat-logs_v2")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 S3_BUCKET_NAME = os.getenv("S3_AUTHOR_ICON_BUCKET_NAME", "utsulog-author-icons")
@@ -127,8 +131,15 @@ def main():
     es_options = {}
     if ELASTICSEARCH_API_KEY:
         es_options["api_key"] = ELASTICSEARCH_API_KEY
+    elif ELASTICSEARCH_ADMIN and ELASTICSEARCH_PASSWORD:
+        es_options["basic_auth"] = (ELASTICSEARCH_ADMIN, ELASTICSEARCH_PASSWORD)
     if ELASTICSEARCH_CA:
         es_options["ca_certs"] = ELASTICSEARCH_CA
+    if CF_CLIENT_ID and CF_CLIENT_SECRET:
+        es_options["headers"] = {
+            "CF-Access-Client-Id": CF_CLIENT_ID,
+            "CF-Access-Client-Secret": CF_CLIENT_SECRET,
+        }
 
     es = Elasticsearch(ELASTICSEARCH_URL, **es_options)
 

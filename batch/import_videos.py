@@ -11,9 +11,11 @@ ELASTICSEARCH_URL = os.getenv("ELASTICSEARCH_URL")
 INDEX_NAME = os.getenv("VIDEOS_INDEX_NAME")
 # ローカルで実行する際のデフォルトファイルパス
 LOCAL_NDJSON_FILE = os.getenv('VIDEOS_NDJSON')
-ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA') # 証明書ファイル名
+ELASTICSEARCH_CA = os.getenv('ELASTICSEARCH_CA') or True
 ELASTICSEARCH_ADMIN = os.getenv('ELASTICSEARCH_ADMIN')
 ELASTICSEARCH_PASSWORD = os.getenv('ELASTICSEARCH_PASSWORD')
+CF_CLIENT_ID = os.getenv('CF_CLIENT_ID')
+CF_CLIENT_SECRET = os.getenv('CF_CLIENT_SECRET')
 
 # ELASTICSEARCH_URLが設定されていない場合はエラー
 if not ELASTICSEARCH_URL:
@@ -36,6 +38,9 @@ def _get_auth_headers():
         auth_str = f"{ELASTICSEARCH_ADMIN}:{ELASTICSEARCH_PASSWORD}"
         encoded_auth = base64.b64encode(auth_str.encode()).decode()
         headers["Authorization"] = f"Basic {encoded_auth}"
+    if CF_CLIENT_ID and CF_CLIENT_SECRET:
+        headers["CF-Access-Client-Id"] = CF_CLIENT_ID
+        headers["CF-Access-Client-Secret"] = CF_CLIENT_SECRET
     return headers
 
 def create_index_if_not_exists(index_name, es_url):
