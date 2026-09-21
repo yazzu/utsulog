@@ -6,7 +6,7 @@ from googleapiclient.discovery import build
 import argparse
 import tempfile
 from urllib.parse import urlparse, parse_qs
-from video_membership import get_membership, MembershipUnavailable
+from video_membership import get_membership, get_video_access, MembershipUnavailable
 from collections import Counter
 from shorts import get_shorts_ids, load_manifest, save_manifest
 
@@ -124,7 +124,7 @@ def load_previous(path):
                 for line in source if line.strip() for row in [json.loads(line)]}
 
 
-def collect(youtube, video_ids, previous, membership=get_membership, shorts_ids=None):
+def collect(youtube, video_ids, previous, membership=None, shorts_ids=None):
     # API errors abort before replacing the previous file. Missing items preserve metadata.
     details = get_video_details(youtube, video_ids)
     fresh = {parse_qs(urlparse(row['video_url']).query)['v'][0]: row for row in details}
@@ -135,17 +135,24 @@ def collect(youtube, video_ids, previous, membership=get_membership, shorts_ids=
         if shorts_ids is not None and video_id in shorts_ids:
             continue
         fresh_row = fresh.get(video_id)
-        # Scheduled and currently running live broadcasts have no archive yet.
-        # Reconsider them on the next run, once YouTube reports actualEndTime.
+        access = None
         if (fresh_row and fresh_row.get('isLive') is True
                 and not fresh_row.get('actualEndTime')):
-            continue
+            # Restricted archives can omit actualEndTime from the Data API even
+            # though the anonymous player reports a completed broadcast.
+            if membership is not None:
+                continue
+            verdict, evidence, player_end = get_video_access(video_id)
+            if not player_end:
+                continue
+            fresh_row['actualEndTime'] = format_time(player_end)
+            access = verdict, evidence
         # Never re-import stale processing statuses or stale confirmed flags from disk.
         row = {key: value for key, value in previous.get(video_id, {}).items()
                if key in ('title', 'video_url', 'thumbnail_url', 'publishedAt')}
         row.update(fresh_row or {})
         row.setdefault('video_url', f'https://www.youtube.com/watch?v={video_id}')
-        verdict, evidence = membership(video_id)
+        verdict, evidence = access or (membership or get_membership)(video_id)
         evidence_counts[evidence] += 1
         failed = verdict is None and evidence != 'watch_player_offline'
         failures += int(failed)

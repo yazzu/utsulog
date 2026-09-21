@@ -7,7 +7,7 @@ import requests
 from get_videos import collect, get_video_details, load_previous, write_to_ndjson
 from get_comments import load_videos
 from import_videos import generate_bulk_payload_from_chunk, create_index_if_not_exists, load_index_videos
-from video_membership import classify_player, get_membership
+from video_membership import classify_player, get_membership, get_video_access
 from video_policy import is_completed_live
 from video_filename import build_video_filename, MAX_VIDEO_FILENAME_BYTES
 
@@ -60,6 +60,36 @@ def test_collect_excludes_scheduled_and_active_live_broadcasts():
 
     assert [row['video_url'].split('=')[-1] for row in rows] == ['upload', 'ended']
     assert [call.args[0] for call in membership.call_args_list] == ['upload', 'ended']
+
+
+def test_members_only_archive_uses_player_end_when_data_api_omits_it(monkeypatch):
+    player = {
+        'videoDetails': {'videoId': 'ykmsXIUyAnE'},
+        'playabilityStatus': {
+            'status': 'UNPLAYABLE',
+            'reason': 'Join this channel to get access to members-only content like this video, and other exclusive perks.',
+            'errorScreen': {'playerLegacyDesktopYpcOfferRenderer': {'offerId': 'sponsors_only_video'}},
+        },
+        'microformat': {'playerMicroformatRenderer': {'liveBroadcastDetails': {
+            'isLiveNow': False,
+            'startTimestamp': '2026-01-18T08:31:22+00:00',
+            'endTimestamp': '2026-01-18T09:40:19+00:00',
+        }}},
+    }
+    response = Mock(status_code=200, headers={},
+                    text='var ytInitialPlayerResponse = ' + json.dumps(player) + ';')
+    monkeypatch.setattr('video_membership._wait', lambda *args: None)
+    monkeypatch.setattr('video_membership.requests.get', Mock(return_value=response))
+
+    assert get_video_access('ykmsXIUyAnE') == (
+        True, 'watch_player_members_only', '2026-01-18T09:40:19+00:00')
+    monkeypatch.setattr('get_videos.get_video_access', lambda _: get_video_access('ykmsXIUyAnE'))
+    row = collect(youtube([item('ykmsXIUyAnE', {
+        'actualStartTime': '2026-01-18T08:31:22Z',
+    })]), ['ykmsXIUyAnE'], {})[0]
+    assert row['membersOnly'] is True
+    assert row['membersOnlyEvidence'] == 'watch_player_members_only'
+    assert row['actualEndTime'] == '20260118184019'
 
 
 @pytest.mark.parametrize('verdict', [True, False, None])

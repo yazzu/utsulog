@@ -7,7 +7,9 @@ echo "Starting batch process..."
 
 # 1. 動画リストの取得とS3へのアップロード
 echo "Running get_videos.py..."
-python batch/get_videos.py
+# Membership-only uploads are absent from the anonymous uploads playlist.
+# Re-include index-only IDs on every run so a backfilled verdict is refreshed.
+python batch/get_videos.py --include-index
 echo "Validating Shorts manifest..."
 python - <<'PY'
 import os
