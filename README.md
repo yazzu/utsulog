@@ -19,6 +19,15 @@ The batch system runs periodically to gather the latest chat logs and index them
 
 The shared video list includes regular uploads and live broadcasts, with `isLive` and `membersOnly` flags. See the [video flag contract and backfill procedure](docs/operations/video-flags.md) for consumer compatibility and migration instructions.
 
+The regular batch and the YouTube comments batch have separate entry points. Run
+`./run_batch.sh` for the regular pipeline and `./run_batch_comments.sh` to fetch
+and import comments. For example, the comments batch can be scheduled every three
+hours with cron (replace the repository path as needed):
+
+```cron
+0 */3 * * * cd /path/to/utsulog && ./run_batch_comments.sh >> batch_comments_cron.log 2>&1
+```
+
 ```
 ┌───────────────────┐      ┌───────────────────┐      ┌───────────────────────┐      ┌─────────────────┐
 │  get_videos.py    │───►│  get_chatlogs.py   │───►│ import_videos/chat_logs.py │───►│  Elasticsearch  │
