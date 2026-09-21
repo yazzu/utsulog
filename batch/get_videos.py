@@ -140,13 +140,11 @@ def collect(youtube, video_ids, previous, membership=None, shorts_ids=None):
                 and not fresh_row.get('actualEndTime')):
             # Restricted archives can omit actualEndTime from the Data API even
             # though the anonymous player reports a completed broadcast.
-            if membership is not None:
-                continue
-            verdict, evidence, player_end = get_video_access(video_id)
-            if not player_end:
-                continue
-            fresh_row['actualEndTime'] = format_time(player_end)
-            access = verdict, evidence
+            if membership is None:
+                verdict, evidence, player_end = get_video_access(video_id)
+                if player_end:
+                    fresh_row['actualEndTime'] = format_time(player_end)
+                access = verdict, evidence
         # Never re-import stale processing statuses or stale confirmed flags from disk.
         row = {key: value for key, value in previous.get(video_id, {}).items()
                if key in ('title', 'video_url', 'thumbnail_url', 'publishedAt')}
