@@ -40,7 +40,7 @@ def test_real_upsert_backfill_and_frontend_filter(monkeypatch):
             {'video_url': 'https://www.youtube.com/watch?v=active', 'isLive': True,
              'actualStartTime': '20260901120000'},
             {'video_url': 'https://www.youtube.com/watch?v=legacy',
-             'actualStartTime': '20260901100000'},
+             'actualStartTime': '20260901100000', 'membersOnly': False},
         ]
         for _ in range(2):
             result = iv.send_to_elasticsearch(iv.generate_bulk_payload_from_chunk(
@@ -66,6 +66,6 @@ def test_real_upsert_backfill_and_frontend_filter(monkeypatch):
         monkeypatch.setattr(api, 'VIDEOS_INDEX_NAME', index)
         with Elasticsearch(base) as es:
             req = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(es=es)))
-            assert {v['videoId'] for v in api.get_videos(req)['videos']} == {'ended', 'legacy'}
+            assert {v['videoId'] for v in api.get_videos(req)['videos']} == {'legacy'}
     finally:
         request('DELETE', '/' + index)

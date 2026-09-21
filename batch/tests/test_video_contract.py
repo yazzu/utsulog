@@ -48,7 +48,7 @@ def test_live_states_and_all_video_comment_input(tmp_path):
     assert len(load_previous(path)) == 4
 
 
-def test_collect_excludes_scheduled_and_active_live_broadcasts():
+def test_collect_keeps_all_video_types_and_checks_membership():
     api = youtube([item('upload'), item('scheduled', {}),
                    item('active', {'actualStartTime': '2026-09-01T01:00:00Z'}),
                    item('ended', {'actualStartTime': '2026-09-01T01:00:00Z',
@@ -58,8 +58,28 @@ def test_collect_excludes_scheduled_and_active_live_broadcasts():
     rows = collect(api, ['upload', 'scheduled', 'active', 'ended'], {},
                    membership=membership)
 
-    assert [row['video_url'].split('=')[-1] for row in rows] == ['upload', 'ended']
-    assert [call.args[0] for call in membership.call_args_list] == ['upload', 'ended']
+    assert [row['video_url'].split('=')[-1] for row in rows] == [
+        'upload', 'scheduled', 'active', 'ended'
+    ]
+    assert [call.args[0] for call in membership.call_args_list] == [
+        'upload', 'scheduled', 'active', 'ended'
+    ]
+
+
+def test_unfinished_live_is_retained_when_player_has_no_end(monkeypatch):
+    monkeypatch.setattr(
+        'get_videos.get_video_access',
+        lambda _: (False, 'watch_player_anonymous_playable', None),
+    )
+
+    row = collect(youtube([item('active', {
+        'actualStartTime': '2026-09-01T01:00:00Z',
+    })]), ['active'], {})[0]
+
+    assert row['isLive'] is True
+    assert row['actualStartTime'] == '20260901100000'
+    assert row['actualEndTime'] is None
+    assert row['membersOnly'] is False
 
 
 def test_members_only_archive_uses_player_end_when_data_api_omits_it(monkeypatch):

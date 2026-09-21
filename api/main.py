@@ -127,6 +127,31 @@ app.add_middleware(
 def read_root():
     return {"message": "Utsulog API"}
 
+
+def build_video_list_query() -> Dict[str, Any]:
+    """Return only completed live broadcasts for the chat-search video list."""
+    return {
+        "bool": {
+            "filter": [
+                {"term": {"membersOnly": False}},
+            ],
+            "should": [
+                {"bool": {"filter": [
+                    {"term": {"isLive": True}},
+                    {"exists": {"field": "actualEndTime"}}
+                ]}},
+                # Rows created before isLive was introduced were already limited
+                # to completed broadcasts. Keep them visible during migration.
+                {"bool": {
+                    "must_not": [{"exists": {"field": "isLive"}}],
+                    "filter": [{"exists": {"field": "actualStartTime"}}]
+                }}
+            ],
+            "minimum_should_match": 1
+        }
+    }
+
+
 @app.get("/videos")
 def get_videos(request: Request):
     """
@@ -138,22 +163,7 @@ def get_videos(request: Request):
         raise HTTPException(status_code=503, detail="Elasticsearch service is unavailable.")
 
     search_query = {
-        "query": {
-            "bool": {
-                "should": [
-                    {"bool": {"filter": [
-                        {"term": {"isLive": True}},
-                        {"exists": {"field": "actualEndTime"}}
-                    ]}},
-                    # Legacy rows were collected only after live broadcasts ended.
-                    {"bool": {
-                        "must_not": [{"exists": {"field": "isLive"}}],
-                        "filter": [{"exists": {"field": "actualStartTime"}}]
-                    }}
-                ],
-                "minimum_should_match": 1
-            }
-        },
+        "query": build_video_list_query(),
         "sort": [
             {
                 "actualStartTime.keyword": {
