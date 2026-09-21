@@ -132,6 +132,9 @@ def build_video_list_query() -> Dict[str, Any]:
     """Return only completed live broadcasts for the chat-search video list."""
     return {
         "bool": {
+            "filter": [
+                {"term": {"membersOnly": False}},
+            ],
             "should": [
                 {"bool": {"filter": [
                     {"term": {"isLive": True}},
