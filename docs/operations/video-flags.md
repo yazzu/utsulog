@@ -46,7 +46,7 @@ docker compose run --rm --no-deps batch python batch/import_comments.py
 
 `--include-index` は既存インデックスがある場合に使用する。初回構築では付けずに取得→投入する。インデックス読み取りはscrollで全件を走査し、1000件で打ち切らない。インデックス読取失敗は処理を中断する。
 
-通常実行も「uploads＋既存NDJSON」のIDを再取得する。初回バックフィルで取り込んだインデックスのみのIDは、以後もNDJSONに残り再試行対象になる。取得不能IDは消さず、判定不能として保持する。APIリクエスト自体の失敗ではNDJSONを置き換えない。出力は一時ファイルからatomic replaceする。
+通常バッチは `get_videos.py --include-index` を使い、「uploads＋既存NDJSON＋既存インデックス」のIDを再取得する。匿名のuploadsプレイリストにはメンバー限定動画が含まれないため、インデックス側のIDも毎回入力に含める。初回バックフィルで取り込んだインデックスのみのIDは、NDJSONが失われた場合でも再試行対象になる。取得不能IDは消さず、判定不能として保持する。APIリクエスト自体の失敗ではNDJSONを置き換えない。出力は一時ファイルからatomic replaceする。
 
 特定IDを再確認する場合は、通常バッチの入力を小さなリストに置き換えないよう別ファイルを使う。
 

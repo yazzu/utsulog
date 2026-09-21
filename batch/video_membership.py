@@ -62,7 +62,17 @@ def classify_player(player, video_id):
     return None, 'watch_player_unknown'
 
 
-def get_membership(video_id):
+def _live_end_time(player):
+    """Return the player-confirmed end time without guessing from live status."""
+    details = player.get('microformat', {}).get('playerMicroformatRenderer', {})
+    live = details.get('liveBroadcastDetails', {})
+    if live.get('isLiveNow') is False:
+        return live.get('endTimestamp')
+    return None
+
+
+def get_video_access(video_id):
+    """Return membership verdict, evidence, and a player-confirmed live end time."""
     delay = 0
     for attempt in range(3):
         _wait(delay)
@@ -77,7 +87,7 @@ def get_membership(video_id):
             evidence = 'watch_timeout' if isinstance(exc, requests.Timeout) else 'watch_network_error'
             print(f'Membership request: id={video_id} attempt={attempt + 1} evidence={evidence}', flush=True)
             if attempt == 2:
-                return None, evidence
+                return None, evidence, None
             delay = 5 * (2 ** attempt)
             continue
         status = response.status_code
@@ -87,17 +97,24 @@ def get_membership(video_id):
             if attempt == 2 or delay > 300:
                 if status == 429 or delay > 300:
                     raise MembershipUnavailable(f'Membership collection stopped: HTTP {status}; retry later')
-                return None, f'watch_http_{status}'
+                return None, f'watch_http_{status}', None
             continue
         if status >= 400:
             print(f'Membership request: id={video_id} http={status}', flush=True)
-            return None, f'watch_http_{status}'
+            return None, f'watch_http_{status}', None
         break
     try:
         match = re.search(r'(?:var\s+)?ytInitialPlayerResponse\s*=\s*', response.text)
         if not match:
-            return None, 'watch_player_missing'
+            return None, 'watch_player_missing', None
         player, _ = json.JSONDecoder().raw_decode(response.text[match.end():])
-        return classify_player(player, video_id)
+        verdict, evidence = classify_player(player, video_id)
+        return verdict, evidence, _live_end_time(player)
     except (ValueError, TypeError, AttributeError):
-        return None, 'watch_parse_error'
+        return None, 'watch_parse_error', None
+
+
+def get_membership(video_id):
+    """Backward-compatible membership-only view of the access check."""
+    verdict, evidence, _ = get_video_access(video_id)
+    return verdict, evidence
